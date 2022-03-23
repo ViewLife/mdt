@@ -11,15 +11,17 @@ import { AllCitizensTab } from "components/admin/manage/citizens/AllCitizensTab"
 import { Permissions } from "@snailycad/permissions";
 
 interface Props {
-  citizens: (Citizen & { user: User })[];
+  citizens: { citizens: (Citizen & { user: User })[]; totalCount: number };
 }
 
 export default function ManageCitizens({ citizens: data }: Props) {
-  const [citizens, setCitizens] = React.useState<(Citizen & { user: User | null })[]>(data);
+  const [citizens, setCitizens] = React.useState<(Citizen & { user: User | null })[]>(
+    data.citizens,
+  );
   const t = useTranslations("Management");
 
   React.useEffect(() => {
-    setCitizens(data);
+    setCitizens(data.citizens);
   }, [data]);
 
   return (
@@ -37,7 +39,7 @@ export default function ManageCitizens({ citizens: data }: Props) {
 
       <h1 className="text-3xl font-semibold mb-3">{t("MANAGE_CITIZENS")}</h1>
 
-      <AllCitizensTab setCitizens={setCitizens} citizens={citizens} />
+      <AllCitizensTab setCitizens={setCitizens} totalCount={data.totalCount} citizens={citizens} />
     </AdminLayout>
   );
 }

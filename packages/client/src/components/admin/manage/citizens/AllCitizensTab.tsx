@@ -21,10 +21,11 @@ type CitizenWithUser = Citizen & {
 
 interface Props {
   citizens: CitizenWithUser[];
+  totalCount: number;
   setCitizens: React.Dispatch<React.SetStateAction<CitizenWithUser[]>>;
 }
 
-export function AllCitizensTab({ citizens, setCitizens }: Props) {
+export function AllCitizensTab({ citizens, totalCount, setCitizens }: Props) {
   const [search, setSearch] = React.useState("");
   const [tempValue, setTempValue] = React.useState<CitizenWithUser | null>(null);
   const [reason, setReason] = React.useState("");
@@ -96,6 +97,7 @@ export function AllCitizensTab({ citizens, setCitizens }: Props) {
 
           <Table
             filter={search}
+            pagination={{ totalCount, enabled: true }}
             data={citizens
               .filter((v) => (userFilter ? String(v.userId) === userFilter : true))
               .map((citizen) => ({
