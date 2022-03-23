@@ -23,7 +23,7 @@ interface DragDrop {
   disabledIndices?: number[];
 }
 
-type PaginationFetchFunc = ({
+export type PaginationFetchFunc = ({
   pageSize,
   pageIndex,
 }: {

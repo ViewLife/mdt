@@ -14,6 +14,7 @@ import { Select } from "components/form/Select";
 import Link from "next/link";
 import { FullDate } from "components/shared/FullDate";
 import { usePermission, Permissions } from "hooks/usePermission";
+import { useTablePagination } from "hooks/shared/useTablePagination";
 
 type CitizenWithUser = Citizen & {
   user: User | null;
@@ -25,7 +26,8 @@ interface Props {
   setCitizens: React.Dispatch<React.SetStateAction<CitizenWithUser[]>>;
 }
 
-export function AllCitizensTab({ citizens, totalCount, setCitizens }: Props) {
+export function AllCitizensTab({ citizens: initialData, totalCount, setCitizens }: Props) {
+  const { data: citizens, paginationFetch } = useTablePagination(initialData);
   const [search, setSearch] = React.useState("");
   const [tempValue, setTempValue] = React.useState<CitizenWithUser | null>(null);
   const [reason, setReason] = React.useState("");
@@ -97,7 +99,7 @@ export function AllCitizensTab({ citizens, totalCount, setCitizens }: Props) {
 
           <Table
             filter={search}
-            pagination={{ totalCount, enabled: true }}
+            pagination={{ totalCount, enabled: true, fetchData: { fetch: paginationFetch } }}
             data={citizens
               .filter((v) => (userFilter ? String(v.userId) === userFilter : true))
               .map((citizen) => ({

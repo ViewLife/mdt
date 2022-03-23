@@ -35,6 +35,10 @@ export function Table<T extends object, RowProps extends object>(props: TablePro
   const data = React.useMemo(() => props.data, [props.data]);
   const { user } = useAuth();
 
+  const controlledPageCount = props.pagination?.enabled
+    ? Math.ceil(props.pagination.totalCount / MAX_ITEMS_PER_PAGE)
+    : undefined;
+
   const tableActionsAlignment = user?.tableActionsAlignment ?? TableActionsAlignment.LEFT;
   const stickyBgColor = props.isWithinCard
     ? "bg-gray-100 dark:bg-gray-2"
@@ -55,6 +59,8 @@ export function Table<T extends object, RowProps extends object>(props: TablePro
   const instance = useTable<TableData<T, RowProps>>(
     {
       autoResetSortBy: false,
+      pageCount: controlledPageCount,
+      manualPagination: true,
       columns,
       data,
       initialState: {
@@ -78,6 +84,7 @@ export function Table<T extends object, RowProps extends object>(props: TablePro
     toggleSortBy,
     headerGroups,
     page,
+    state: tableState,
   } = instance;
 
   React.useEffect(() => {
@@ -95,6 +102,15 @@ export function Table<T extends object, RowProps extends object>(props: TablePro
 
     props.dragDrop?.handleMove(originals);
   }
+
+  React.useEffect(() => {
+    if (!props.pagination?.enabled) return;
+
+    props.pagination.fetchData.fetch({
+      pageIndex: tableState.pageIndex,
+      pageSize: tableState.pageSize,
+    });
+  }, [props.pagination, tableState]);
 
   React.useEffect(() => {
     setGlobalFilter(props.filter);
