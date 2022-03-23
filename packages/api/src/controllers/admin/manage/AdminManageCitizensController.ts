@@ -24,12 +24,12 @@ export class AdminManageCitizensController {
     fallback: (u) => u.rank !== Rank.USER,
     permissions: [Permissions.ViewCitizens, Permissions.ManageCitizens, Permissions.DeleteCitizens],
   })
-  async getCitizens(@QueryParams("skip") skip = 0) {
+  async getCitizens(@QueryParams("skip") skip = "0") {
     const count = await prisma.citizen.count();
     const citizens = await prisma.citizen.findMany({
       include: { ...citizenInclude },
       take: 50,
-      skip,
+      skip: Number(skip),
     });
 
     return { citizens, totalCount: count };

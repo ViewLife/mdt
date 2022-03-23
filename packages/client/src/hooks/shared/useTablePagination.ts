@@ -1,27 +1,28 @@
 import * as React from "react";
 import useFetch from "lib/useFetch";
 
+interface FetchOptions {
+  pageSize: number;
+  pageIndex: number;
+  path: string;
+  dataKey: string;
+}
+
 export function useTablePagination<T>(initialData: T) {
   const [data, setData] = React.useState(initialData);
-  const { execute } = useFetch();
+  const { state, execute } = useFetch();
 
-  async function paginationFetch({ path }: { path: string }) {
-    return async function paginationFetch({
-      pageSize,
-      pageIndex,
-    }: {
-      pageSize: number;
-      pageIndex: number;
-    }) {
-      const { json } = await execute(path, {
-        params: {
-          skip: pageSize * pageIndex,
-        },
-      });
+  async function paginationFetch({ dataKey, path, pageSize, pageIndex }: FetchOptions) {
+    const { json } = await execute(path, {
+      params: {
+        skip: pageSize * pageIndex,
+      },
+    });
 
-      setData(json);
-    };
+    if (json[dataKey]) {
+      setData(json[dataKey]);
+    }
   }
 
-  return { data, paginationFetch };
+  return { data, setData, paginationState: state, paginationFetch };
 }

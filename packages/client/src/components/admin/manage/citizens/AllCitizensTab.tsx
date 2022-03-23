@@ -27,7 +27,7 @@ interface Props {
 }
 
 export function AllCitizensTab({ citizens: initialData, totalCount, setCitizens }: Props) {
-  const { data: citizens, paginationFetch } = useTablePagination(initialData);
+  const { data: citizens, paginationFetch, paginationState } = useTablePagination(initialData);
   const [search, setSearch] = React.useState("");
   const [tempValue, setTempValue] = React.useState<CitizenWithUser | null>(null);
   const [reason, setReason] = React.useState("");
@@ -99,7 +99,15 @@ export function AllCitizensTab({ citizens: initialData, totalCount, setCitizens 
 
           <Table
             filter={search}
-            pagination={{ totalCount, enabled: true, fetchData: { fetch: paginationFetch } }}
+            pagination={{
+              totalCount,
+              enabled: true,
+              fetchData: {
+                fetch: (data) =>
+                  paginationFetch({ path: "/admin/manage/citizens", dataKey: "citizens", ...data }),
+                state: paginationState,
+              },
+            }}
             data={citizens
               .filter((v) => (userFilter ? String(v.userId) === userFilter : true))
               .map((citizen) => ({

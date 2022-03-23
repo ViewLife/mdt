@@ -35,6 +35,7 @@ export function Table<T extends object, RowProps extends object>(props: TablePro
   const data = React.useMemo(() => props.data, [props.data]);
   const { user } = useAuth();
 
+  const showPagination = props.pagination?.enabled ? true : data.length > MAX_ITEMS_PER_PAGE;
   const controlledPageCount = props.pagination?.enabled
     ? Math.ceil(props.pagination.totalCount / MAX_ITEMS_PER_PAGE)
     : undefined;
@@ -59,8 +60,8 @@ export function Table<T extends object, RowProps extends object>(props: TablePro
   const instance = useTable<TableData<T, RowProps>>(
     {
       autoResetSortBy: false,
-      pageCount: controlledPageCount,
-      manualPagination: true,
+      pageCount: props.pagination?.enabled ? controlledPageCount : undefined,
+      manualPagination: !!props.pagination?.enabled,
       columns,
       data,
       initialState: {
@@ -110,7 +111,8 @@ export function Table<T extends object, RowProps extends object>(props: TablePro
       pageIndex: tableState.pageIndex,
       pageSize: tableState.pageSize,
     });
-  }, [props.pagination, tableState]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tableState.pageIndex, tableState.pageSize]);
 
   React.useEffect(() => {
     setGlobalFilter(props.filter);
@@ -173,7 +175,9 @@ export function Table<T extends object, RowProps extends object>(props: TablePro
         </ReactSortable>
       </table>
 
-      {data.length > MAX_ITEMS_PER_PAGE ? <TablePagination instance={instance} /> : null}
+      {showPagination ? (
+        <TablePagination paginationState={props.pagination?.fetchData.state} instance={instance} />
+      ) : null}
     </div>
   );
 }
