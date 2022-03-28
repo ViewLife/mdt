@@ -1,6 +1,6 @@
 {
   "name": "@snailycad/schemas",
-  "version": "1.0.0-beta.75",
+  "version": "1.0.0-beta.77",
   "main": "./dist/index.js",
   "scripts": {
     "build": "tsup",
@@ -9,7 +9,7 @@
   "devDependencies": {
     "tslib": "^2.3.1",
     "tsup": "^5.12.1",
-    "typescript": "^4.6.2"
+    "typescript": "^4.6.3"
   },
   "dependencies": {
     "zod": "^3.14.2"
