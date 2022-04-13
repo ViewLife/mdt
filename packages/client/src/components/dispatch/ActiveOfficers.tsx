@@ -3,7 +3,7 @@ import { useTranslations } from "use-intl";
 import { Button } from "components/Button";
 import type { ActiveOfficer } from "state/leoState";
 import { ManageUnitModal } from "./modals/ManageUnit";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import { ModalIds } from "types/ModalIds";
 import { useActiveOfficers } from "hooks/realtime/useActiveOfficers";
 import { useRouter } from "next/router";
@@ -15,8 +15,6 @@ import { Filter } from "react-bootstrap-icons";
 import { useActiveDispatchers } from "hooks/realtime/useActiveDispatchers";
 import { Table } from "components/shared/Table";
 import { useFeatureEnabled } from "hooks/useFeatureEnabled";
-import type { FullIncident } from "src/pages/officer/incidents";
-import { ManageIncidentModal } from "components/leo/incidents/ManageIncidentModal";
 import { UnitRadioChannelModal } from "./active-units/UnitRadioChannelModal";
 import { ActiveUnitsSearch } from "./active-units/ActiveUnitsSearch";
 import { classNames } from "lib/classNames";
@@ -25,6 +23,7 @@ import { useActiveUnitsFilter } from "hooks/shared/useActiveUnitsFilter";
 import { MergeUnitModal } from "./active-units/MergeUnitModal";
 import { OfficerColumn } from "./active-units/officers/OfficerColumn";
 import { isUnitOfficer } from "@snailycad/utils/typeguards";
+import { ActiveIncidentColumn } from "./active-units/officers/ActiveIncidentColumn";
 
 export function ActiveOfficers() {
   const { activeOfficers } = useActiveOfficers();
@@ -44,16 +43,10 @@ export function ActiveOfficers() {
   const isDispatch = router.pathname === "/dispatch";
 
   const [tempUnit, setTempUnit] = React.useState<ActiveOfficer | CombinedLeoUnit | null>(null);
-  const [tempIncident, setTempIncident] = React.useState<FullIncident | null>(null);
 
   function handleEditClick(officer: ActiveOfficer | CombinedLeoUnit) {
     setTempUnit(officer);
     openModal(ModalIds.ManageUnit);
-  }
-
-  function handleIncidentOpen(incident: FullIncident) {
-    setTempIncident(incident);
-    openModal(ModalIds.ManageIncident);
   }
 
   return (
@@ -93,7 +86,7 @@ export function ActiveOfficers() {
               .filter((officer) => handleFilter(officer, leoSearch))
               .map((officer) => {
                 const color = officer.status?.color;
-                const activeIncident = isUnitOfficer(officer) && officer.activeIncident;
+                const activeIncident = isUnitOfficer(officer) ? officer.activeIncident : null;
 
                 const useDot = user?.statusViewMode === StatusViewMode.DOT_COLOR;
                 const nameAndCallsign = `${generateCallsign(officer)} ${makeUnitName(officer)}`;
@@ -124,32 +117,17 @@ export function ActiveOfficers() {
                       {officer.status?.value?.value}
                     </span>
                   ),
-                  incident: activeIncident ? (
-                    <Button
-                      onClick={() =>
-                        handleIncidentOpen({
-                          ...activeIncident,
-                          isActive: true,
-                        } as FullIncident)
-                      }
-                    >
-                      #{activeIncident.caseNumber}
-                    </Button>
-                  ) : (
-                    common("none")
-                  ),
+                  incident: <ActiveIncidentColumn incident={activeIncident} />,
                   radioChannel: <UnitRadioChannelModal unit={officer} />,
                   actions: isDispatch ? (
-                    <>
-                      <Button
-                        disabled={!hasActiveDispatchers}
-                        onClick={() => handleEditClick(officer)}
-                        small
-                        variant="success"
-                      >
-                        {common("manage")}
-                      </Button>
-                    </>
+                    <Button
+                      disabled={!hasActiveDispatchers}
+                      onClick={() => handleEditClick(officer)}
+                      small
+                      variant="success"
+                    >
+                      {common("manage")}
+                    </Button>
                   ) : null,
                 };
               })}
@@ -177,9 +155,6 @@ export function ActiveOfficers() {
           unit={tempUnit as Officer}
           onClose={() => setTempUnit(null)}
         />
-      ) : null}
-      {tempIncident ? (
-        <ManageIncidentModal incident={tempIncident} onClose={() => setTempIncident(null)} />
       ) : null}
     </div>
   );

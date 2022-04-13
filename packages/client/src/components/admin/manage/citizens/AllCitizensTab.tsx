@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Modal } from "components/modal/Modal";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import useFetch from "lib/useFetch";
 import { Loader } from "components/Loader";
 import { ModalIds } from "types/ModalIds";
@@ -112,7 +112,11 @@ export function AllCitizensTab({ citizens: initialData, totalCount, setCitizens 
               .filter((v) => (userFilter ? String(v.userId) === userFilter : true))
               .map((citizen) => ({
                 name: `${citizen.name} ${citizen.surname}`,
-                dateOfBirth: <FullDate onlyDate>{citizen.dateOfBirth}</FullDate>,
+                dateOfBirth: (
+                  <FullDate isDateOfBirth onlyDate>
+                    {citizen.dateOfBirth}
+                  </FullDate>
+                ),
                 gender: citizen.gender.value,
                 ethnicity: citizen.ethnicity.value,
                 hairColor: citizen.hairColor,

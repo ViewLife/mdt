@@ -18,7 +18,7 @@ import { BadRequest, NotFound } from "@tsed/exceptions";
 import { BodyParams, Context, PathParams } from "@tsed/platform-params";
 import { Description, Put } from "@tsed/schema";
 import { prisma } from "lib/prisma";
-import { callInclude, findUnit } from "./911-calls/Calls911Controller";
+import { callInclude } from "./911-calls/Calls911Controller";
 import { combinedUnitProperties, leoProperties, unitProperties } from "lib/leo/activeOfficer";
 import { sendDiscordWebhook } from "lib/discord/webhooks";
 import { Socket } from "services/SocketService";
@@ -27,6 +27,7 @@ import { generateCallsign } from "@snailycad/utils/callsign";
 import { validateSchema } from "lib/validateSchema";
 import { handleStartEndOfficerLog } from "lib/leo/handleStartEndOfficerLog";
 import { UsePermissions, Permissions } from "middlewares/UsePermissions";
+import { findUnit } from "lib/leo/findUnit";
 
 @Controller("/dispatch/status")
 @UseBeforeEach(IsAuth)
@@ -60,11 +61,7 @@ export class StatusController {
     const isFromDispatch = req.headers["is-from-dispatch"]?.toString() === "true";
     const isDispatch = isFromDispatch && user.isDispatch;
 
-    const { type, unit } = await findUnit(
-      unitId,
-      { userId: isDispatch ? undefined : user.id },
-      true,
-    );
+    const { type, unit } = await findUnit(unitId, { userId: isDispatch ? undefined : user.id });
 
     if (!unit) {
       throw new NotFound("unitNotFound");
@@ -252,7 +249,6 @@ function createWebhookData(miscCadSettings: MiscCadSettings, unit: Unit) {
 
   const status = unit.status?.value.value ?? "Off-duty";
   const unitName = isNotCombined ? `${unit.citizen.name} ${unit.citizen.surname}` : "";
-  // todo: fix type
   const callsign = generateCallsign(unit as any, miscCadSettings.callsignTemplate);
   const officerName = isNotCombined
     ? `${unit.badgeNumber} - ${callsign} ${unitName}`

@@ -3,16 +3,16 @@ import { Button } from "components/Button";
 import { FormField } from "components/form/FormField";
 import { Loader } from "components/Loader";
 import { Modal } from "components/modal/Modal";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import { Form, Formik, useFormikContext } from "formik";
 import useFetch from "lib/useFetch";
 import { ModalIds } from "types/ModalIds";
 import { useTranslations } from "use-intl";
-import { Citizen, RecordType } from "@snailycad/types";
+import { CustomFieldCategory, Citizen, RecordType } from "@snailycad/types";
 import { calculateAge, formatCitizenAddress } from "lib/utils";
 import format from "date-fns/format";
-import { VehiclesAndWeaponsSection } from "./VehiclesAndWeapons";
-import { RecordsArea } from "./RecordsArea";
+// import { VehiclesAndWeaponsSection } from "./VehiclesAndWeapons";
+import { NameSearchTabsContainer } from "./tabs/TabsContainer";
 import { NameSearchResult, useNameSearch } from "state/search/nameSearchState";
 import { normalizeValue } from "context/ValuesContext";
 import { useRouter } from "next/router";
@@ -29,6 +29,8 @@ import dynamic from "next/dynamic";
 import { ManageLicensesModal } from "components/citizen/licenses/ManageLicensesModal";
 import { ManageCitizenFlagsModal } from "./ManageCitizenFlagsModal";
 import { CitizenImageModal } from "components/citizen/modals/CitizenImageModal";
+import { ManageCustomFieldsModal } from "./ManageCustomFieldsModal";
+import { CustomFieldsArea } from "../CustomFieldsArea";
 
 const VehicleSearchModal = dynamic(
   async () => (await import("components/leo/modals/VehicleSearchModal")).VehicleSearchModal,
@@ -37,11 +39,6 @@ const VehicleSearchModal = dynamic(
 const WeaponSearchModal = dynamic(
   async () => (await import("components/leo/modals/WeaponSearchModal")).WeaponSearchModal,
 );
-
-const enum Toggled {
-  VEHICLES = 0,
-  RECORDS = 1,
-}
 
 function AutoSubmit() {
   const { getPayload } = useModal();
@@ -72,7 +69,6 @@ export function NameSearchModal() {
 
   const { openModal } = useModal();
   const isLeo = router.pathname === "/officer";
-  const [toggled, setToggled] = React.useState<Toggled | null>(null);
   const { results, currentResult, setCurrentResult, setResults } = useNameSearch();
 
   const payloadName = getPayload<Citizen>(ModalIds.NameSearch)?.name;
@@ -80,7 +76,6 @@ export function NameSearchModal() {
   React.useEffect(() => {
     if (!isOpen(ModalIds.NameSearch)) {
       setResults(null);
-      setToggled(null);
       setCurrentResult(null);
     }
   }, [isOpen, setCurrentResult, setResults]);
@@ -88,7 +83,7 @@ export function NameSearchModal() {
   async function handleLicensesSubmit(values: any) {
     if (!currentResult) return;
 
-    const { json } = await execute(`/leo/licenses/${currentResult.id}`, {
+    const { json } = await execute(`/search/actions/licenses/${currentResult.id}`, {
       method: "PUT",
       data: {
         ...values,
@@ -126,14 +121,6 @@ export function NameSearchModal() {
       setResults(Array.isArray(json) ? json : [json]);
     } else {
       setResults(false);
-    }
-  }
-
-  function handleToggle(toggle: Toggled) {
-    if (toggle === toggled) {
-      setToggled(null);
-    } else {
-      setToggled(toggle);
     }
   }
 
@@ -304,8 +291,10 @@ export function NameSearchModal() {
                       ) : null}
 
                       <Infofield label={cT("dateOfBirth")}>
-                        <FullDate onlyDate>{currentResult.dateOfBirth}</FullDate>({cT("age")}:{" "}
-                        {calculateAge(currentResult.dateOfBirth)})
+                        <FullDate isDateOfBirth onlyDate>
+                          {currentResult.dateOfBirth}
+                        </FullDate>
+                        ({cT("age")}: {calculateAge(currentResult.dateOfBirth)})
                       </Infofield>
 
                       <Infofield label={cT("gender")}>{currentResult.gender.value}</Infofield>
@@ -325,6 +314,10 @@ export function NameSearchModal() {
 
                       <Infofield label={cT("address")}>
                         {formatCitizenAddress(currentResult)}
+                      </Infofield>
+
+                      <Infofield label={cT("phoneNumber")}>
+                        {currentResult.phoneNumber || common("none")}
                       </Infofield>
 
                       <ManageOccupationModal isLeo occupation={currentResult.occupation} />
@@ -365,42 +358,13 @@ export function NameSearchModal() {
                         </Button>
                       ) : null}
                     </div>
+
+                    <CustomFieldsArea currentResult={currentResult} isLeo={isLeo} />
                   </div>
                 </div>
 
                 <div className="mt-5">
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => handleToggle(Toggled.VEHICLES)}
-                      type="button"
-                      className="w-full"
-                    >
-                      {t("toggleVehiclesWeapons")}
-                    </Button>
-                    <Button
-                      onClick={() => handleToggle(Toggled.RECORDS)}
-                      type="button"
-                      className="w-full"
-                    >
-                      {t("toggleRecords")}
-                    </Button>
-                  </div>
-
-                  <>
-                    {toggled === Toggled.VEHICLES ? (
-                      <VehiclesAndWeaponsSection
-                        vehicles={currentResult.vehicles}
-                        weapons={currentResult.weapons}
-                      />
-                    ) : null}
-
-                    {toggled === Toggled.RECORDS ? (
-                      <RecordsArea
-                        warrants={currentResult.warrants}
-                        records={currentResult.Record}
-                      />
-                    ) : null}
-                  </>
+                  <NameSearchTabsContainer />
                 </div>
               </div>
             ) : null}
@@ -448,9 +412,16 @@ export function NameSearchModal() {
             <AutoSubmit />
             <VehicleSearchModal />
             <WeaponSearchModal />
-            <ManageCitizenFlagsModal />
             {currentResult ? (
               <>
+                <ManageCitizenFlagsModal />
+                <ManageCustomFieldsModal
+                  category={CustomFieldCategory.CITIZEN}
+                  url={`/search/actions/custom-fields/citizen/${currentResult.id}`}
+                  allCustomFields={currentResult.allCustomFields ?? []}
+                  customFields={currentResult.customFields ?? []}
+                  onUpdate={(results) => setCurrentResult({ ...currentResult, ...results })}
+                />
                 <ManageLicensesModal
                   allowRemoval={false}
                   state={state}

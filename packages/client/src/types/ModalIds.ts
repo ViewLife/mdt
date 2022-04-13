@@ -15,6 +15,7 @@ export const enum ModalIds {
   ImportCitizens = "ImportCitizensModal",
   ImportVehicles = "ImportVehiclesModal",
   ImportWeapons = "ImportWeaponsModal",
+  ManageCustomField = "ManageCustomFieldModal",
 
   ManageTowCall = "ManageTowCallModal",
   AssignToTowCall = "AssignToTowCallModal",
@@ -54,6 +55,9 @@ export const enum ModalIds {
   ManageIncident = "ManageIncidentModal",
   LinkCallToIncident = "LinkCallToIncidentModal",
   ManageSeizedItems = "ManageSeizedItemsModal",
+  ManageDLExam = "ManageDLExamModal",
+  ManageCitizenCustomFields = "ManageCitizenCustomFieldsModal",
+  CustomFieldSearch = "CustomFieldSearchModal",
 
   SearchMedicalRecord = "SearchMedicalRecordModal",
   CreateMedicalRecord = "CreateMedicalRecordModal",
@@ -95,4 +99,6 @@ export const enum ModalIds {
   AlertDeleteSelectedValues = "AlertDeleteSelectedValuesModal",
   AlertDeclineOfficer = "AlertDeclineOfficerModal",
   AlertUseOldPermissions = "AlertUseOldPermissionsModal",
+  AlertDeleteDLExam = "AlertDeleteDLExamModal",
+  AlertDeleteCustomField = "AlertDeleteCustomFieldModal",
 }

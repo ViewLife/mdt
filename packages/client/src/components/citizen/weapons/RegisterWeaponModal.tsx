@@ -9,7 +9,7 @@ import { Loader } from "components/Loader";
 import { Modal } from "components/modal/Modal";
 import useFetch from "lib/useFetch";
 import { useValues } from "src/context/ValuesContext";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import { ModalIds } from "types/ModalIds";
 import { Citizen, ValueLicenseType, Weapon, WeaponValue } from "@snailycad/types";
 import { handleValidate } from "lib/handleValidate";
@@ -23,8 +23,8 @@ import { InputSuggestions } from "components/form/inputs/InputSuggestions";
 interface Props {
   weapon: Weapon | null;
   citizens: Citizen[];
-  onCreate?: (newV: Weapon) => void;
-  onUpdate?: (old: Weapon, newV: Weapon) => void;
+  onCreate?(newV: Weapon): void;
+  onUpdate?(old: Weapon, newV: Weapon): void;
   onClose?(): void;
 }
 
@@ -177,11 +177,7 @@ export function RegisterWeaponModal({ citizens = [], weapon, onClose, onCreate, 
             </FormField>
 
             <footer className="flex justify-end mt-5">
-              <Button
-                type="reset"
-                onClick={() => closeModal(ModalIds.RegisterWeapon)}
-                variant="cancel"
-              >
+              <Button type="reset" onClick={handleClose} variant="cancel">
                 Cancel
               </Button>
               <Button

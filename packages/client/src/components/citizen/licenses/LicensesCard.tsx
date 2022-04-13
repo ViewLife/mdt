@@ -1,7 +1,7 @@
 import { useTranslations } from "use-intl";
 import { Button } from "components/Button";
 import { ModalIds } from "types/ModalIds";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import { ManageLicensesModal } from "./ManageLicensesModal";
 import { CitizenWithVehAndWep, useCitizen } from "context/CitizenContext";
 import { useFeatureEnabled } from "hooks/useFeatureEnabled";
@@ -9,7 +9,7 @@ import { Infofield } from "components/shared/Infofield";
 import { DriversLicenseCategoryType } from "@snailycad/types";
 import useFetch from "lib/useFetch";
 
-const types = ["driversLicense", "pilotLicense", "weaponLicense", "waterLicense"] as const;
+const types = ["driversLicense", "pilotLicense", "waterLicense", "weaponLicense"] as const;
 
 export function LicensesCard() {
   const { openModal, closeModal } = useModal();

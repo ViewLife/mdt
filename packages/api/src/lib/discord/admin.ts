@@ -1,9 +1,11 @@
-import { Rank, User, WhitelistStatus } from "@prisma/client";
+import { hasPermission, Permissions } from "@snailycad/permissions";
+import { DiscordRole, Rank, User, WhitelistStatus } from "@prisma/client";
 import { RESTGetAPIGuildMemberResult, Routes } from "discord-api-types/v10";
 import { BOT_TOKEN, getRest, GUILD_ID } from "lib/discord/config";
 import { prisma } from "lib/prisma";
 
 type UserProperties =
+  | "permissions"
   | "isLeo"
   | "rank"
   | "isSupervisor"
@@ -22,7 +24,15 @@ export async function updateMemberRoles(
 
   const discordRoles = await prisma.discordRoles.findUnique({
     where: { id: String(discordRolesId) },
-    include: { roles: true, leoRoles: true, emsFdRoles: true },
+    include: {
+      roles: true,
+      leoRoles: true,
+      emsFdRoles: true,
+      dispatchRoles: true,
+      towRoles: true,
+      taxiRoles: true,
+      leoSupervisorRoles: true,
+    },
   });
 
   if (!discordRoles) return;
@@ -34,23 +44,62 @@ export async function updateMemberRoles(
 
   if (!discordMember?.user?.id || discordMember.pending) return;
 
-  const leoRoles = discordRoles.leoRoles.map((role) => ({
-    roleId: role.id,
-    method: createMethod(user.isLeo),
-  }));
-
-  const emsFdRoles = discordRoles.emsFdRoles.map((role) => ({
-    roleId: role.id,
-    method: createMethod(user.isEmsFd),
-  }));
+  const leoRoles = makeRolesArr(
+    discordRoles.leoRoles,
+    hasPermissionWithFallback({
+      fallback: user.isLeo,
+      userPermissions: user.permissions,
+      permissionsToCheck: discordRoles.leoRolePermissions,
+    }),
+  );
+  const leoSupervisorRoles = makeRolesArr(
+    discordRoles.leoSupervisorRoles,
+    hasPermissionWithFallback({
+      fallback: user.isSupervisor,
+      userPermissions: user.permissions,
+      permissionsToCheck: discordRoles.leoSupervisorRolePermissions,
+    }),
+  );
+  const emsFdRoles = makeRolesArr(
+    discordRoles.emsFdRoles,
+    hasPermissionWithFallback({
+      fallback: user.isEmsFd,
+      userPermissions: user.permissions,
+      permissionsToCheck: discordRoles.emsFdRolePermissions,
+    }),
+  );
+  const dispatchRoles = makeRolesArr(
+    discordRoles.dispatchRoles,
+    hasPermissionWithFallback({
+      fallback: user.isDispatch,
+      userPermissions: user.permissions,
+      permissionsToCheck: discordRoles.dispatchRolePermissions,
+    }),
+  );
+  const towRoles = makeRolesArr(
+    discordRoles.towRoles,
+    hasPermissionWithFallback({
+      fallback: user.isTow,
+      userPermissions: user.permissions,
+      permissionsToCheck: discordRoles.towRolePermissions,
+    }),
+  );
+  const taxiRoles = makeRolesArr(
+    discordRoles.taxiRoles,
+    hasPermissionWithFallback({
+      fallback: user.isTaxi,
+      userPermissions: user.permissions,
+      permissionsToCheck: discordRoles.taxiRolePermissions,
+    }),
+  );
 
   const data = [
     ...leoRoles,
     ...emsFdRoles,
-    { roleId: discordRoles.leoSupervisorRoleId, method: createMethod(user.isSupervisor) },
-    { roleId: discordRoles.dispatchRoleId, method: createMethod(user.isDispatch) },
-    { roleId: discordRoles.towRoleId, method: createMethod(user.isTow) },
-    { roleId: discordRoles.taxiRoleId, method: createMethod(user.isTaxi) },
+    ...leoSupervisorRoles,
+    ...dispatchRoles,
+    ...towRoles,
+    ...taxiRoles,
     { roleId: discordRoles.adminRoleId, method: createMethod(user.rank === Rank.ADMIN) },
     {
       roleId: discordRoles.whitelistedRoleId,
@@ -63,6 +112,13 @@ export async function updateMemberRoles(
       await addOrRemoveRole(user.discordId!, d.roleId, d.method);
     }),
   );
+}
+
+function makeRolesArr(roles: DiscordRole[], isTrue: boolean) {
+  return roles.map((role) => ({
+    roleId: role.id,
+    method: createMethod(isTrue),
+  }));
 }
 
 async function addOrRemoveRole(discordId: string, roleId: string | null, method: "put" | "delete") {
@@ -78,4 +134,16 @@ async function addOrRemoveRole(discordId: string, roleId: string | null, method:
 
 function createMethod(truthy: boolean): "put" | "delete" {
   return truthy ? "put" : "delete";
+}
+
+function hasPermissionWithFallback(options: {
+  userPermissions: string[];
+  permissionsToCheck: readonly (Permissions | string)[];
+  fallback: boolean;
+}) {
+  if (!options.userPermissions.length || !options.permissionsToCheck.length) {
+    return options.fallback;
+  }
+
+  return hasPermission(options.userPermissions, options.permissionsToCheck as Permissions[]);
 }

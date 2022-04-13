@@ -5,12 +5,14 @@ import { Dropdown } from "components/Dropdown";
 import { Button } from "components/Button";
 import { classNames } from "lib/classNames";
 import { usePermission, Permissions } from "hooks/usePermission";
+import { useFeatureEnabled } from "hooks/useFeatureEnabled";
 
 export function OfficerDropdown() {
   const router = useRouter();
   const t = useTranslations("Nav");
   const isActive = (route: string) => router.pathname.startsWith(route);
   const { hasPermissions } = usePermission();
+  const { DL_EXAMS, DMV } = useFeatureEnabled();
 
   const items = [
     {
@@ -46,22 +48,35 @@ export function OfficerDropdown() {
     {
       name: t("callHistory"),
       href: "/officer/call-history",
-      show: hasPermissions([Permissions.ViewCallHistory], true),
+      show: hasPermissions([Permissions.ViewCallHistory, Permissions.ManageCallHistory], true),
     },
     {
-      name: t("manageUnits"),
-      href: "/admin/manage/units",
-      show: hasPermissions([Permissions.ManageUnits, Permissions.ViewUnits], (u) => u.isSupervisor),
+      name: t("dmv"),
+      href: "/officer/dmv",
+      show: DMV && hasPermissions([Permissions.ManageDMV], true),
     },
     {
       name: t("citizenLogs"),
       href: "/officer/supervisor/citizen-logs",
       show: hasPermissions([Permissions.ViewCitizenLogs], (u) => u.isSupervisor),
     },
+    {
+      name: t("dlExams"),
+      href: "/officer/supervisor/dl-exams",
+      show:
+        DL_EXAMS &&
+        hasPermissions([Permissions.ViewDLExams, Permissions.ManageDLExams], (u) => u.isSupervisor),
+    },
+    {
+      name: t("manageUnits"),
+      href: "/admin/manage/units",
+      show: hasPermissions([Permissions.ManageUnits, Permissions.ViewUnits], (u) => u.isSupervisor),
+    },
   ];
 
   return (
     <Dropdown
+      className="min-w-[180px]"
       trigger={
         <Button
           role="listitem"

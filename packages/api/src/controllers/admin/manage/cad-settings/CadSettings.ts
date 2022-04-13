@@ -15,7 +15,7 @@ import { Socket } from "services/SocketService";
 import { nanoid } from "nanoid";
 import { validateSchema } from "lib/validateSchema";
 import type { cad, Feature } from "@prisma/client";
-import { getCADVersion } from "src/main";
+import { getCADVersion } from "@snailycad/utils/version";
 
 @Controller("/admin/manage/cad-settings")
 export class ManageCitizensController {
@@ -123,6 +123,8 @@ export class ManageCitizensController {
         authScreenHeaderImageId: data.authScreenHeaderImageId,
         maxOfficersPerUser: data.maxOfficersPerUser,
         maxDepartmentsEachPerUser: data.maxDepartmentsEachPerUser,
+        maxAssignmentsToCalls: data.maxAssignmentsToCalls,
+        maxAssignmentsToIncidents: data.maxAssignmentsToIncidents,
       },
     });
 

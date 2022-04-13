@@ -12,6 +12,8 @@ export function useIsRouteFeatureEnabled(cad: Partial<Pick<CAD, "features">>) {
     TAXI: "/taxi",
     TRUCK_LOGS: "/truck-logs",
     BUSINESS: "/business",
+    DL_EXAMS: "/officer/supervisor/dl-exams",
+    DMV: "/officer/dmv",
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps

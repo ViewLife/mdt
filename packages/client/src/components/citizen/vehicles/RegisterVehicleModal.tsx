@@ -9,9 +9,15 @@ import { Loader } from "components/Loader";
 import { Modal } from "components/modal/Modal";
 import useFetch from "lib/useFetch";
 import { useValues } from "src/context/ValuesContext";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import { ModalIds } from "types/ModalIds";
-import { Citizen, RegisteredVehicle, ValueLicenseType, VehicleValue } from "@snailycad/types";
+import {
+  Citizen,
+  RegisteredVehicle,
+  ValueLicenseType,
+  VehicleValue,
+  WhitelistStatus,
+} from "@snailycad/types";
 import { handleValidate } from "lib/handleValidate";
 import { Input } from "components/form/inputs/Input";
 import { useCitizen } from "context/CitizenContext";
@@ -29,8 +35,8 @@ import { InputSuggestions } from "components/form/inputs/InputSuggestions";
 interface Props {
   vehicle: RegisteredVehicle | null;
   citizens: Pick<Citizen, "name" | "surname" | "id">[];
-  onCreate?: (newV: RegisteredVehicle) => void;
-  onUpdate?: (old: RegisteredVehicle, newV: RegisteredVehicle) => void;
+  onCreate?(newV: RegisteredVehicle): void;
+  onUpdate?(old: RegisteredVehicle, newV: RegisteredVehicle): void;
   onClose?(): void;
 }
 
@@ -87,7 +93,7 @@ export function RegisterVehicleModal({
       if (json?.id) {
         toastMessage({
           title: common("success"),
-          message: tVehicle("successVehicleRegistered", { plate: values.plate }),
+          message: tVehicle("successVehicleRegistered", { plate: values.plate.toUpperCase() }),
           icon: "success",
         });
         onCreate?.(json);
@@ -107,6 +113,7 @@ export function RegisterVehicleModal({
     plate: vehicle?.plate ?? "",
     vinNumber: vehicle?.vinNumber ?? "",
     reportedStolen: vehicle?.reportedStolen ?? false,
+    reApplyForDmv: vehicle?.dmvStatus === WhitelistStatus.DECLINED ? false : undefined,
     businessId: currentBusiness?.id ?? null,
     employeeId: currentEmployee?.id ?? null,
   };
@@ -261,21 +268,28 @@ export function RegisterVehicleModal({
             </FormField>
 
             {vehicle ? (
-              <FormField errorMessage={errors.reportedStolen} label={tVehicle("reportAsStolen")}>
-                <Toggle
-                  onClick={handleChange}
-                  name="reportedStolen"
-                  toggled={values.reportedStolen}
-                />
-              </FormField>
+              <FormRow>
+                <FormField errorMessage={errors.reportedStolen} label={tVehicle("reportAsStolen")}>
+                  <Toggle
+                    onClick={handleChange}
+                    name="reportedStolen"
+                    toggled={values.reportedStolen}
+                  />
+                </FormField>
+
+                <FormField errorMessage={errors.reApplyForDmv} label={tVehicle("reApplyForDmv")}>
+                  <Toggle
+                    disabled={vehicle.dmvStatus !== WhitelistStatus.DECLINED}
+                    onClick={handleChange}
+                    name="reApplyForDmv"
+                    toggled={values.reApplyForDmv ?? false}
+                  />
+                </FormField>
+              </FormRow>
             ) : null}
 
             <footer className="flex justify-end mt-5">
-              <Button
-                type="reset"
-                onClick={() => closeModal(ModalIds.RegisterVehicle)}
-                variant="cancel"
-              >
+              <Button type="reset" onClick={handleClose} variant="cancel">
                 {common("cancel")}
               </Button>
               <Button

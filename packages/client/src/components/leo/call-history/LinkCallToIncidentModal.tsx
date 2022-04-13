@@ -4,7 +4,7 @@ import { FormField } from "components/form/FormField";
 import { Select, SelectValue } from "components/form/Select";
 import { Loader } from "components/Loader";
 import { Modal } from "components/modal/Modal";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import { Form, Formik } from "formik";
 import { handleValidate } from "lib/handleValidate";
 import useFetch from "lib/useFetch";
@@ -57,6 +57,7 @@ export function LinkCallToIncidentModal({ incidents, onSave, call }: Props) {
           <Form>
             <FormField errorMessage={errors.incidentIds as string} label={t("caseNumber")}>
               <Select
+                closeMenuOnSelect={false}
                 isMulti
                 values={incidents.map((incident) => ({
                   value: incident.id,

@@ -6,7 +6,7 @@ import { FormField } from "components/form/FormField";
 import { Loader } from "components/Loader";
 import { Modal } from "components/modal/Modal";
 import useFetch from "lib/useFetch";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import { ModalIds } from "types/ModalIds";
 import type { Citizen, MedicalRecord } from "@snailycad/types";
 import { handleValidate } from "lib/handleValidate";
@@ -19,7 +19,7 @@ import { useImageUrl } from "hooks/useImageUrl";
 import { useFeatureEnabled } from "hooks/useFeatureEnabled";
 
 interface Props {
-  onCreate?: (newV: MedicalRecord) => void;
+  onCreate?(newV: MedicalRecord): void;
   onClose?(): void;
 }
 

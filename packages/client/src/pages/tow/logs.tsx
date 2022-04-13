@@ -10,7 +10,7 @@ import { requestAll } from "lib/utils";
 import { Table } from "components/shared/Table";
 import { Title } from "components/shared/Title";
 import { ModalIds } from "types/ModalIds";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import { Button } from "components/Button";
 import dynamic from "next/dynamic";
 import { FullDate } from "components/shared/FullDate";
@@ -40,8 +40,12 @@ export default function TowLogs(props: Props) {
 
   function handleViewDescription(call: TowCall) {
     setTempCall(call);
+    console.log({ call });
+
     openModal(ModalIds.Description, call);
   }
+
+  console.log({ tempCall });
 
   function assignedUnit(call: TowCall) {
     return call.assignedUnit ? (
@@ -98,7 +102,7 @@ export default function TowLogs(props: Props) {
         />
       )}
 
-      {tempCall?.descriptionData ? (
+      {tempCall ? (
         <DescriptionModal onClose={() => setTempCall(null)} value={tempCall.descriptionData} />
       ) : null}
     </Layout>

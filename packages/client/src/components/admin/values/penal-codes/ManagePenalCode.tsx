@@ -7,7 +7,7 @@ import { Modal } from "components/modal/Modal";
 import { Formik, useFormikContext } from "formik";
 import { handleValidate } from "lib/handleValidate";
 import useFetch from "lib/useFetch";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import type { PenalCode, PenalCodeGroup, ValueType } from "@snailycad/types";
 import { useTranslations } from "use-intl";
 import { FormRow } from "components/form/FormRow";
@@ -19,8 +19,8 @@ interface Props {
   type: ValueType;
   penalCode: PenalCode | null;
   groups: PenalCodeGroup[];
-  onCreate: (newValue: PenalCode) => void;
-  onUpdate: (oldValue: PenalCode, newValue: PenalCode) => void;
+  onCreate(newValue: PenalCode): void;
+  onUpdate(oldValue: PenalCode, newValue: PenalCode): void;
 }
 
 export function ManagePenalCode({ onCreate, onUpdate, groups, type, penalCode }: Props) {

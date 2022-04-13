@@ -18,11 +18,10 @@ import { requestAll } from "lib/utils";
 import { useSignal100 } from "hooks/shared/useSignal100";
 import { usePanicButton } from "hooks/shared/usePanicButton";
 import { Title } from "components/shared/Title";
-import type { ActiveDispatchers, Bolo, EmsFdDeputy, Officer } from "@snailycad/types";
+import type { ActiveDispatchers, Bolo, EmsFdDeputy, LeoIncident, Officer } from "@snailycad/types";
 import { useFeatureEnabled } from "hooks/useFeatureEnabled";
-import type { FullIncident } from "../officer/incidents";
 import { ModalIds } from "types/ModalIds";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import { Permissions } from "@snailycad/permissions";
 
 const NotepadModal = dynamic(async () => {
@@ -49,6 +48,11 @@ const ActiveIncidents = dynamic(async () => {
   return (await import("components/dispatch/ActiveIncidents")).ActiveIncidents;
 });
 
+const CustomFieldSearch = dynamic(async () => {
+  return (await import("components/leo/modals/CustomFieldSearch/CustomFieldSearch"))
+    .CustomFieldSearch;
+});
+
 interface Props {
   calls: Full911Call[];
   bolos: Bolo[];
@@ -57,7 +61,7 @@ interface Props {
   activeDeputies: EmsFdDeputy[];
   activeOfficers: Officer[];
   activeDispatchers: ActiveDispatchers[];
-  activeIncidents: FullIncident[];
+  activeIncidents: LeoIncident[];
 }
 
 export default function OfficerDashboard(props: Props) {
@@ -130,6 +134,7 @@ export default function OfficerDashboard(props: Props) {
       )}
       <AddressSearchModal />
       <NameSearchModal />
+      <CustomFieldSearch />
     </Layout>
   );
 }

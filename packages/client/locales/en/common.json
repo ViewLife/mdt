@@ -47,7 +47,8 @@
     "filters": "Filters",
     "openInSearch": "Open in search",
     "goBack": "Go back",
-    "success": "Success"
+    "success": "Success",
+    "currency": "$"
   },
   "Nav": {
     "citizen": "Citizen",
@@ -77,7 +78,9 @@
     "register": "Register",
     "callHistory": "Call History",
     "citizenLogs": "Citizen Logs",
-    "courthouse": "Courthouse"
+    "courthouse": "Courthouse",
+    "dlExams": "Driver License Exams",
+    "dmv": "Department of Motor Vehicles"
   },
   "Errors": {
     "unknown": "An unexpected error occurred",

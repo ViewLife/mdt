@@ -7,7 +7,7 @@ import ReactSelect, {
   ActionMeta,
 } from "react-select";
 import { useAuth } from "context/AuthContext";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import { MultiValueContainerContextMenu } from "./select/MultiValueContainerContextMenu";
 import { MultiValueContainerPenalCode } from "./select/MultiValueContainerPenalCode";
 
@@ -20,7 +20,7 @@ export interface SelectValue<Value = string> {
 
 interface Props<Value extends SelectValue = SelectValue<any>>
   extends Exclude<SelectProps, "options"> {
-  onChange: (event: any) => void;
+  onChange(event: any): void;
   value: Value | Value[] | string | null;
   values: Value[];
   errorMessage?: string;

@@ -6,7 +6,7 @@ import { prisma } from "lib/prisma";
 import { setCookie } from "utils/setCookie";
 import { signJWT } from "utils/jwt";
 import { Cookie } from "@snailycad/config";
-import { findOrCreateCAD } from "lib/cad";
+import { findOrCreateCAD, isFeatureEnabled } from "lib/cad";
 import { AUTH_SCHEMA } from "@snailycad/schemas";
 import { validateSchema } from "lib/validateSchema";
 import { ExtendedNotFound } from "src/exceptions/ExtendedNotFound";
@@ -30,9 +30,9 @@ export class AuthController {
   async login(@BodyParams() body: unknown, @Res() res: Response) {
     const data = validateSchema(AUTH_SCHEMA, body);
 
-    const user = await prisma.user.findUnique({
+    const user = await prisma.user.findFirst({
       where: {
-        username: data.username,
+        username: { mode: "insensitive", equals: data.username },
       },
     });
 
@@ -54,8 +54,11 @@ export class AuthController {
 
     // only allow Discord auth (if enabled)
     const cad = await prisma.cad.findFirst({ include: { features: true } });
-    const regularAuthEnabled =
-      cad?.features.some((v) => v.feature === Feature.ALLOW_REGULAR_LOGIN && v.isEnabled) ?? true;
+    const regularAuthEnabled = isFeatureEnabled({
+      features: cad?.features,
+      feature: Feature.ALLOW_REGULAR_LOGIN,
+      defaultReturn: true,
+    });
 
     if (!regularAuthEnabled) {
       throw new BadRequest("allowRegularLoginIsDisabled");
@@ -121,9 +124,11 @@ export class AuthController {
     }
 
     // only allow Discord auth
-    const regularAuthEnabled =
-      preCad?.features.some((v) => v.feature === Feature.ALLOW_REGULAR_LOGIN && v.isEnabled) ??
-      true;
+    const regularAuthEnabled = isFeatureEnabled({
+      features: preCad?.features,
+      feature: Feature.ALLOW_REGULAR_LOGIN,
+      defaultReturn: true,
+    });
 
     if (!regularAuthEnabled) {
       throw new BadRequest("allowRegularLoginIsDisabled");

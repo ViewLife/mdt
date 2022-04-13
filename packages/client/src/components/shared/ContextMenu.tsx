@@ -2,7 +2,7 @@ import * as Menu from "@radix-ui/react-context-menu";
 import type * as React from "react";
 import { v4 } from "uuid";
 import { classNames } from "lib/classNames";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 
 interface Props {
   items: (ContextItem | boolean)[];
@@ -30,7 +30,7 @@ export function ContextMenu({ items, canBeOpened = true, asChild, children }: Pr
   }
 
   if (!canBeOpened) {
-    return <>{children}</>;
+    return children as JSX.Element;
   }
 
   return (

@@ -9,12 +9,15 @@ import { isUnitCombined, isUnitOfficer } from "@snailycad/utils";
 import { useActiveOfficers } from "hooks/realtime/useActiveOfficers";
 import { ActiveOfficer, useLeoState } from "state/leoState";
 import { ArrowRight } from "react-bootstrap-icons";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import { ModalIds } from "types/ModalIds";
 import { useRouter } from "next/router";
 import { useTranslations } from "next-intl";
 import { useGenerateCallsign } from "hooks/useGenerateCallsign";
 import { makeUnitName } from "lib/utils";
+import { Draggable } from "components/shared/dnd/Draggable";
+import { DndActions } from "types/DndActions";
+import { useActiveDispatchers } from "hooks/realtime/useActiveDispatchers";
 
 interface Props {
   officer: Officer | CombinedLeoUnit;
@@ -32,11 +35,14 @@ export function OfficerColumn({ officer, nameAndCallsign, setTempUnit }: Props) 
   const { codes10 } = useValues();
   const { execute } = useFetch();
   const { generateCallsign } = useGenerateCallsign();
+  const { hasActiveDispatchers } = useActiveDispatchers();
 
   const t = useTranslations("Leo");
 
   const router = useRouter();
   const isDispatch = router.pathname === "/dispatch";
+  const isLeo = router.pathname.includes("/officer");
+  const isEligiblePage = isDispatch || isLeo;
 
   const codesMapped = codes10.values
     .filter((v) => v.type === "STATUS_CODE")
@@ -81,7 +87,7 @@ export function OfficerColumn({ officer, nameAndCallsign, setTempUnit }: Props) 
 
   return (
     <ContextMenu
-      canBeOpened={canBeOpened ?? false}
+      canBeOpened={isEligiblePage ? canBeOpened ?? false : false}
       asChild
       items={[
         {
@@ -93,33 +99,41 @@ export function OfficerColumn({ officer, nameAndCallsign, setTempUnit }: Props) 
         ...dispatchCodes,
       ]}
     >
-      <span
-        className="flex items-center capitalize cursor-default"
-        // * 9 to fix overlapping issues with next table column
-        style={{ minWidth: nameAndCallsign.length * 9 }}
-      >
-        {isUnitOfficer(officer) && officer.imageId ? (
-          <img
-            className="rounded-md w-[30px] h-[30px] object-cover mr-2"
-            draggable={false}
-            src={makeImageUrl("units", officer.imageId)}
-          />
-        ) : null}
-        {isUnitCombined(officer) ? (
-          <div className="flex items-center">
-            {generateCallsign(officer, "pairedUnitTemplate")}
-            <span className="mx-4">
-              <ArrowRight />
-            </span>
-            {officer.officers.map((officer) => (
-              <React.Fragment key={officer.id}>
-                {generateCallsign(officer)} {makeUnitName(officer)} <br />
-              </React.Fragment>
-            ))}
-          </div>
-        ) : (
-          nameAndCallsign
-        )}
+      <span>
+        <Draggable
+          canDrag={hasActiveDispatchers && isDispatch}
+          type={DndActions.MoveUnitTo911Call}
+          item={officer}
+        >
+          <span
+            className="flex items-center capitalize cursor-grab"
+            // * 9 to fix overlapping issues with next table column
+            style={{ minWidth: nameAndCallsign.length * 9 }}
+          >
+            {isUnitOfficer(officer) && officer.imageId ? (
+              <img
+                className="rounded-md w-[30px] h-[30px] object-cover mr-2"
+                draggable={false}
+                src={makeImageUrl("units", officer.imageId)}
+              />
+            ) : null}
+            {isUnitCombined(officer) ? (
+              <div className="flex items-center">
+                {generateCallsign(officer, "pairedUnitTemplate")}
+                <span className="mx-4">
+                  <ArrowRight />
+                </span>
+                {officer.officers.map((officer) => (
+                  <React.Fragment key={officer.id}>
+                    {generateCallsign(officer)} {makeUnitName(officer)} <br />
+                  </React.Fragment>
+                ))}
+              </div>
+            ) : (
+              nameAndCallsign
+            )}
+          </span>
+        </Draggable>
       </span>
     </ContextMenu>
   );

@@ -1,9 +1,9 @@
 import { PrismaClient } from "@prisma/client";
 import { divisionToDivisions } from "migrations/divisionToDivisions";
 import { pairedSymbolToTemplate } from "migrations/pairedSymbolToTemplate";
-import { leoRoleToLeoRoles } from "migrations/leoRoleToLeoRoles";
-import { emsRoleToEmsRoles } from "migrations/emsRoleToEmsRoles";
+import { xToXArrAll } from "migrations/xToXArr";
 import { disabledFeatureToCadFeature } from "migrations/disabledFeatureToCadFeature";
+import { officersToUnitsInvolved } from "migrations/officersToUnitsInvolved";
 
 export const prisma = new PrismaClient({
   errorFormat: "colorless",
@@ -14,9 +14,9 @@ async function handleMigrations() {
   await Promise.all([
     divisionToDivisions(),
     pairedSymbolToTemplate(),
-    leoRoleToLeoRoles(),
-    emsRoleToEmsRoles(),
+    xToXArrAll(),
     disabledFeatureToCadFeature(),
+    officersToUnitsInvolved(),
   ]);
 }
 

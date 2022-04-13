@@ -7,7 +7,7 @@ import { getSessionUser } from "lib/auth";
 import { getTranslations } from "lib/getTranslation";
 import type { GetServerSideProps } from "next";
 import { ActiveOfficer, useLeoState } from "state/leoState";
-import { Bolo, Officer, RecordType } from "@snailycad/types";
+import { Bolo, LeoIncident, Officer, RecordType } from "@snailycad/types";
 import { ActiveCalls } from "components/leo/ActiveCalls";
 import { Full911Call, useDispatchState } from "state/dispatchState";
 import { ModalButtons } from "components/leo/ModalButtons";
@@ -19,8 +19,7 @@ import { useSignal100 } from "hooks/shared/useSignal100";
 import { usePanicButton } from "hooks/shared/usePanicButton";
 import { Title } from "components/shared/Title";
 import { UtilityPanel } from "components/shared/UtilityPanel";
-import type { FullIncident } from "./incidents";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import { ModalIds } from "types/ModalIds";
 import { Permissions } from "@snailycad/permissions";
 
@@ -52,12 +51,18 @@ const CreateWarrantModal = dynamic(async () => {
   return (await import("components/leo/modals/CreateWarrantModal")).CreateWarrantModal;
 });
 
+const CustomFieldSearch = dynamic(async () => {
+  return (await import("components/leo/modals/CustomFieldSearch/CustomFieldSearch"))
+    .CustomFieldSearch;
+});
+
 interface Props {
   officers: Officer[];
   activeOfficer: ActiveOfficer | null;
   calls: Full911Call[];
   bolos: Bolo[];
-  activeIncidents: FullIncident[];
+  activeIncidents: LeoIncident[];
+  allOfficers: Officer[];
 }
 
 export default function OfficerDashboard({
@@ -66,10 +71,10 @@ export default function OfficerDashboard({
   calls,
   activeOfficer,
   activeIncidents,
+  allOfficers,
 }: Props) {
   const state = useLeoState();
-  const { setCalls, setBolos, setActiveOfficers, activeOfficers, setActiveIncidents } =
-    useDispatchState();
+  const dispatchState = useDispatchState();
   const t = useTranslations("Leo");
   const { signal100Enabled, Component, audio: signal100Audio } = useSignal100();
   const { unit, audio, PanicButton } = usePanicButton();
@@ -78,10 +83,11 @@ export default function OfficerDashboard({
   React.useEffect(() => {
     state.setActiveOfficer(activeOfficer);
     state.setOfficers(officers);
-    setActiveIncidents(activeIncidents);
+    dispatchState.setActiveIncidents(activeIncidents);
+    dispatchState.setAllOfficers(allOfficers);
 
-    setCalls(calls);
-    setBolos(bolos);
+    dispatchState.setCalls(calls);
+    dispatchState.setBolos(bolos);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bolos, calls, officers, activeOfficer]);
 
@@ -101,8 +107,8 @@ export default function OfficerDashboard({
         </div>
 
         <StatusesArea
-          setUnits={setActiveOfficers}
-          units={activeOfficers}
+          setUnits={dispatchState.setActiveOfficers}
+          units={dispatchState.activeOfficers}
           activeUnit={state.activeOfficer}
           setActiveUnit={state.setActiveOfficer}
         />
@@ -127,6 +133,7 @@ export default function OfficerDashboard({
       )}
       <NameSearchModal />
       <CreateWarrantModal />
+      <CustomFieldSearch />
 
       <div>
         <CreateTicketModal type={RecordType.TICKET} />
@@ -138,28 +145,34 @@ export default function OfficerDashboard({
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ req, locale }) => {
-  const [{ officers, citizens }, activeOfficer, values, calls, bolos, { activeIncidents }] =
-    await requestAll(req, [
-      ["/leo", { officers: [], citizens: [] }],
-      ["/leo/active-officer", null],
-      [
-        "/admin/values/codes_10?paths=penal_code,impound_lot,license,driverslicense_category,vehicle_flag,citizen_flag",
-        [],
-      ],
-      ["/911-calls", []],
-      ["/bolos", []],
-      ["/dispatch", { activeIncidents: [] }],
-    ]);
+  const [
+    { officers },
+    activeOfficer,
+    values,
+    calls,
+    bolos,
+    { officers: allOfficers, activeIncidents },
+  ] = await requestAll(req, [
+    ["/leo", { officers: [] }],
+    ["/leo/active-officer", null],
+    [
+      "/admin/values/codes_10?paths=penal_code,impound_lot,license,driverslicense_category,vehicle_flag,citizen_flag",
+      [],
+    ],
+    ["/911-calls", []],
+    ["/bolos", []],
+    ["/dispatch", { officers: [], activeIncidents: [] }],
+  ]);
 
   return {
     props: {
       session: await getSessionUser(req),
+      allOfficers,
       activeOfficer,
       officers,
       calls,
       bolos,
       values,
-      citizens,
       activeIncidents,
       messages: {
         ...(await getTranslations(

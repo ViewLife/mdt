@@ -3,12 +3,12 @@ import { Button } from "components/Button";
 import { FormField } from "components/form/FormField";
 import { Loader } from "components/Loader";
 import { Modal } from "components/modal/Modal";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import { Form, Formik } from "formik";
 import useFetch from "lib/useFetch";
 import { ModalIds } from "types/ModalIds";
 import { useTranslations } from "use-intl";
-import type { RegisteredVehicle } from "@snailycad/types";
+import { CustomFieldCategory, RegisteredVehicle } from "@snailycad/types";
 import { useRouter } from "next/router";
 import { InputSuggestions } from "components/form/inputs/InputSuggestions";
 import { yesOrNoText } from "lib/utils";
@@ -22,6 +22,9 @@ import { Pencil } from "react-bootstrap-icons";
 import { ManageVehicleFlagsModal } from "./VehicleSearch/ManageVehicleFlagsModal";
 import { ManageVehicleLicensesModal } from "./VehicleSearch/ManageVehicleLicensesModal";
 import { useVehicleLicenses } from "hooks/locale/useVehicleLicenses";
+import { ManageCustomFieldsModal } from "./NameSearchModal/ManageCustomFieldsModal";
+import { CustomFieldsArea } from "./CustomFieldsArea";
+import { Status } from "components/shared/Status";
 
 export function VehicleSearchModal() {
   const { currentResult, setCurrentResult } = useVehicleSearch();
@@ -32,7 +35,7 @@ export function VehicleSearchModal() {
   const vT = useTranslations("Vehicles");
   const t = useTranslations("Leo");
   const { state, execute } = useFetch();
-  const { BUSINESS } = useFeatureEnabled();
+  const { BUSINESS, DMV } = useFeatureEnabled();
   const router = useRouter();
   const isLeo = router.pathname === "/officer";
   const showMarkStolen = currentResult && isLeo && !currentResult.reportedStolen;
@@ -226,6 +229,15 @@ export function VehicleSearchModal() {
                       {currentResult.flags?.map((v) => v.value).join(", ") || common("none")}
                     </Infofield>
                   </li>
+                  {DMV ? (
+                    <li>
+                      <Infofield label={vT("dmvStatus")}>
+                        <Status state={currentResult.dmvStatus}>
+                          {currentResult.dmvStatus?.toLowerCase()}
+                        </Status>
+                      </Infofield>
+                    </li>
+                  ) : null}
                   <li>
                     <Infofield
                       childrenProps={{
@@ -239,6 +251,8 @@ export function VehicleSearchModal() {
                       {common(yesOrNoText(currentResult.reportedStolen))}
                     </Infofield>
                   </li>
+
+                  <CustomFieldsArea currentResult={currentResult} isLeo={isLeo} />
                 </ul>
 
                 <TruckLogsTable result={currentResult} />
@@ -288,6 +302,16 @@ export function VehicleSearchModal() {
                 </Button>
               </div>
             </footer>
+
+            {currentResult ? (
+              <ManageCustomFieldsModal
+                onUpdate={(results) => setCurrentResult({ ...currentResult, ...results })}
+                category={CustomFieldCategory.VEHICLE}
+                url={`/search/actions/custom-fields/vehicle/${currentResult.id}`}
+                allCustomFields={currentResult.allCustomFields ?? []}
+                customFields={currentResult.customFields ?? []}
+              />
+            ) : null}
           </Form>
         )}
       </Formik>

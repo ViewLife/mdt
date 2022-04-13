@@ -14,7 +14,7 @@ import { Modal } from "components/modal/Modal";
 import { Formik, FormikHelpers } from "formik";
 import { handleValidate } from "lib/handleValidate";
 import useFetch from "lib/useFetch";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import { useValues } from "context/ValuesContext";
 import { DriversLicenseCategoryType, EmployeeAsEnum, ValueType } from "@snailycad/types";
 import { useTranslations } from "use-intl";
@@ -45,8 +45,8 @@ interface Props {
   type: ValueType;
   value: AnyValue | null;
   clType?: DriversLicenseCategoryType | null;
-  onCreate: (newValue: AnyValue) => void;
-  onUpdate: (oldValue: AnyValue, newValue: AnyValue) => void;
+  onCreate(newValue: AnyValue): void;
+  onUpdate(oldValue: AnyValue, newValue: AnyValue): void;
 }
 
 const BUSINESS_VALUES = [

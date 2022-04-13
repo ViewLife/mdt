@@ -31,6 +31,11 @@ const FEATURES_LIST: Record<Feature, FeatureItem> = {
     description:
       "When enabled, this will allow citizens to create truck logs and track their progress.",
   },
+  DL_EXAMS: {
+    name: "Driver's License Exams",
+    description:
+      "When enabled, this will require citizens to enter a driving licenses exam to get a driver's license.",
+  },
   AOP: {
     name: "Area Of Play",
     // eslint-disable-next-line quotes
@@ -97,7 +102,7 @@ const FEATURES_LIST: Record<Feature, FeatureItem> = {
   ACTIVE_DISPATCHERS: {
     name: "Active Dispatchers",
     description:
-      "When enabled, curtain buttons on the LEO and EMS/FD dashboard will become disabled when there is an active dispatcher.",
+      "When enabled, certain buttons on the LEO and EMS/FD dashboard will become disabled when there is an active dispatcher.",
   },
   ALLOW_CITIZEN_UPDATE_LICENSE: {
     name: "Allow citizens to update licenses",
@@ -122,6 +127,11 @@ const FEATURES_LIST: Record<Feature, FeatureItem> = {
     name: "Allow citizen deletion by citizen creator",
     description:
       "When disabled, this will only allow administrators to delete citizens. Users who created a citizen will not be able to delete them themselves.",
+  },
+  DMV: {
+    name: "Department of Motor Vehicles (DMV)",
+    description:
+      "When enabled, vehicles must first be approved by the Department of Motor Vehicles within the CAD.",
   },
 };
 

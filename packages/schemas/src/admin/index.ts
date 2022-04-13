@@ -22,6 +22,8 @@ export const CAD_MISC_SETTINGS_SCHEMA = z.object({
   maxBusinessesPerCitizen: z.number().nullable(),
   maxDivisionsPerOfficer: z.number().nullable(),
   maxDepartmentsEachPerUser: z.number().nullable(),
+  maxAssignmentsToIncidents: z.number().nullable(),
+  maxAssignmentsToCalls: z.number().nullable(),
   maxPlateLength: z.number().min(1),
   pairedUnitTemplate: z.string().max(255).nullable(),
   callsignTemplate: z.string(),
@@ -34,12 +36,20 @@ export const CAD_MISC_SETTINGS_SCHEMA = z.object({
 export const DISCORD_SETTINGS_SCHEMA = z.object({
   leoRoles: z.array(z.any()).nullable().optional(),
   emsFdRoles: z.array(z.any()).nullable().optional(),
-  leoSupervisorRoleId: z.string().nullable().optional(),
-  dispatchRoleId: z.string().nullable().optional(),
-  towRoleId: z.string().nullable().optional(),
-  taxiRoleId: z.string().nullable().optional(),
+  leoSupervisorRoles: z.array(z.any()).nullable().optional(),
+  dispatchRoles: z.array(z.any()).nullable().optional(),
+  towRoles: z.array(z.any()).nullable().optional(),
+  taxiRoles: z.array(z.any()).nullable().optional(),
   adminRoleId: z.string().nullable().optional(),
   whitelistedRoleId: z.string().nullable().optional(),
+
+  adminRolePermissions: z.array(z.string()).nullable().optional(),
+  leoRolePermissions: z.array(z.string()).nullable().optional(),
+  leoSupervisorRolePermissions: z.array(z.string()).nullable().optional(),
+  emsFdRolePermissions: z.array(z.string()).nullable().optional(),
+  dispatchRolePermissions: z.array(z.string()).nullable().optional(),
+  towRolePermissions: z.array(z.string()).nullable().optional(),
+  taxiRolePermissions: z.array(z.string()).nullable().optional(),
 });
 
 export const DISCORD_WEBHOOKS_SCHEMA = z.object({
@@ -74,3 +84,10 @@ export const UPDATE_USER_SCHEMA = z.object({
 });
 
 export const PERMISSIONS_SCHEMA = z.record(z.string());
+
+const CUSTOM_FIELD_CATEGORY = /CITIZEN|WEAPON|VEHICLE/;
+export const CUSTOM_FIELDS_SCHEMA = z.object({
+  name: z.string().min(2),
+  category: z.string().regex(CUSTOM_FIELD_CATEGORY),
+  citizenEditable: z.boolean(),
+});

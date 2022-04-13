@@ -1,19 +1,31 @@
 {
   "name": "@snailycad/types",
-  "version": "1.0.0-beta.77",
-  "main": "./dist/index.js",
-  "scripts": {
-    "build": "tsup",
-    "typecheck": "tsc --noEmit"
+  "version": "1.0.0-beta.85",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs"
+    },
+    "./package.json": "./package.json"
   },
-  "devDependencies": {
-    "@snailycad/permissions": "1.0.0-beta.77",
-    "tsup": "^5.12.1",
-    "typescript": "^4.6.3"
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "yarn tsup",
+    "typecheck": "yarn tsc --noEmit"
   },
   "dependencies": {
-    "type-fest": "^2.12.1",
-    "zod": "^3.14.2"
+    "type-fest": "^2.12.2",
+    "zod": "^3.14.4"
+  },
+  "devDependencies": {
+    "@snailycad/permissions": "1.0.0-beta.85",
+    "tsup": "^5.12.4",
+    "typescript": "^4.6.3"
   },
   "tsup": {
     "entry": [
@@ -23,6 +35,10 @@
     "bundle": false,
     "platform": "node",
     "target": "node16",
-    "silent": true
+    "silent": true,
+    "format": [
+      "cjs",
+      "esm"
+    ]
   }
 }

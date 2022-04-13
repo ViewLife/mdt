@@ -6,7 +6,7 @@ import { PersonFill } from "react-bootstrap-icons";
 import type { GetServerSideProps } from "next";
 import { getSessionUser } from "lib/auth";
 import { Layout } from "components/Layout";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import { Button } from "components/Button";
 import useFetch from "lib/useFetch";
 import { getTranslations } from "lib/getTranslation";
@@ -16,7 +16,7 @@ import { LicensesCard } from "components/citizen/licenses/LicensesCard";
 import { MedicalRecords } from "components/citizen/medical-records/MedicalRecords";
 import { calculateAge, formatCitizenAddress, requestAll } from "lib/utils";
 import { useCitizen } from "context/CitizenContext";
-import { RecordsArea } from "components/leo/modals/NameSearchModal/RecordsArea";
+// import { RecordsArea } from "components/leo/modals/NameSearchModal/tabs/RecordsArea";
 import dynamic from "next/dynamic";
 import { useImageUrl } from "hooks/useImageUrl";
 import { useAuth } from "context/AuthContext";
@@ -26,6 +26,7 @@ import { Infofield } from "components/shared/Infofield";
 import { Title } from "components/shared/Title";
 import { ModalIds } from "types/ModalIds";
 import { FullDate } from "components/shared/FullDate";
+import { RecordsTab } from "components/leo/modals/NameSearchModal/tabs/RecordsTab";
 
 const AlertModal = dynamic(async () => (await import("components/modal/AlertModal")).AlertModal);
 const CitizenImageModal = dynamic(
@@ -103,8 +104,10 @@ export default function CitizenId() {
             ) : null}
 
             <Infofield label={t("dateOfBirth")}>
-              <FullDate onlyDate>{citizen.dateOfBirth}</FullDate> ({t("age")}:{" "}
-              {calculateAge(citizen.dateOfBirth)})
+              <FullDate isDateOfBirth onlyDate>
+                {citizen.dateOfBirth}
+              </FullDate>{" "}
+              ({t("age")}: {calculateAge(citizen.dateOfBirth)})
             </Infofield>
             <Infofield label={t("gender")}>{citizen.gender.value}</Infofield>
             <Infofield label={t("ethnicity")}>{citizen.ethnicity.value}</Infofield>
@@ -150,7 +153,8 @@ export default function CitizenId() {
       <div className="mt-3 space-y-3">
         <VehiclesCard vehicles={citizen.vehicles} />
         <WeaponsCard weapons={citizen.weapons} />
-        <RecordsArea records={citizen.Record} />
+        {/* <RecordsArea records={citizen.Record} /> */}
+        <RecordsTab records={citizen.Record} isCitizen />
       </div>
 
       <CitizenImageModal citizen={citizen} />

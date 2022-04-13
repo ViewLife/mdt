@@ -3,7 +3,7 @@ import { FormField } from "components/form/FormField";
 import { Select } from "components/form/Select";
 import { Loader } from "components/Loader";
 import { Modal } from "components/modal/Modal";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import { useValues } from "context/ValuesContext";
 import { Form, Formik } from "formik";
 import useFetch from "lib/useFetch";
@@ -26,7 +26,7 @@ export function ManageVehicleLicensesModal() {
   async function onSubmit(values: typeof INITIAL_VALUES) {
     if (!currentResult) return;
 
-    const { json } = await execute(`/leo/vehicle-licenses/${currentResult.id}`, {
+    const { json } = await execute(`/search/actions/vehicle-licenses/${currentResult.id}`, {
       method: "PUT",
       data: values,
     });

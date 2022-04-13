@@ -1,7 +1,7 @@
 import * as React from "react";
 import type { User } from "@snailycad/types";
 import { Modal } from "components/modal/Modal";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import { useTranslations } from "next-intl";
 import { ModalIds } from "types/ModalIds";
 import {
@@ -138,8 +138,8 @@ export function ManagePermissionsModal({ user }: Props) {
 
                     <div className="grid grid-cols-1 md:grid-cols-3">
                       {filtered.map((permission) => {
-                        const formattedName =
-                          permission.match(/[A-Z][a-z]+/g)?.join(" ") ?? permission;
+                        const formattedName = formatPermissionName(permission);
+
                         return (
                           <FormField key={permission} className="my-1" label={formattedName}>
                             <Toggle
@@ -184,4 +184,11 @@ function makePermissionsData(data: Record<PermissionNames, boolean>) {
   }
 
   return newPermissions;
+}
+
+export function formatPermissionName(permission: string) {
+  // todo: whoops
+  if (permission === Permissions.ManageDMV) return "Manage DMV";
+
+  return permission.match(/[A-Z][a-z]+/g)?.join(" ") ?? permission;
 }

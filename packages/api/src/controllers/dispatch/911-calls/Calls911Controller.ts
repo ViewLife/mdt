@@ -1,5 +1,5 @@
 import { Controller } from "@tsed/di";
-import { Delete, Get, Post, Put } from "@tsed/schema";
+import { Delete, Description, Get, Post, Put } from "@tsed/schema";
 import { CREATE_911_CALL, LINK_INCIDENT_TO_CALL } from "@snailycad/schemas";
 import { HeaderParams, BodyParams, Context, PathParams, QueryParams } from "@tsed/platform-params";
 import { BadRequest, NotFound } from "@tsed/exceptions";
@@ -7,33 +7,33 @@ import { prisma } from "lib/prisma";
 import { Socket } from "services/SocketService";
 import { UseBeforeEach } from "@tsed/platform-middlewares";
 import { IsAuth } from "middlewares/IsAuth";
-import { unitProperties, leoProperties, combinedUnitProperties } from "lib/leo/activeOfficer";
+import { unitProperties, _leoProperties } from "lib/leo/activeOfficer";
 import { validateSchema } from "lib/validateSchema";
 import {
   ShouldDoType,
-  CombinedLeoUnit,
-  Officer,
-  EmsFdDeputy,
   DepartmentValue,
   DivisionValue,
   User,
-  StatusValue,
+  MiscCadSettings,
+  Call911,
 } from "@prisma/client";
 import { sendDiscordWebhook } from "lib/discord/webhooks";
-import type { cad, Call911 } from "@snailycad/types";
+import type { cad } from "@snailycad/types";
 import type { APIEmbed } from "discord-api-types/v10";
 import { manyToManyHelper } from "utils/manyToMany";
 import { Permissions, UsePermissions } from "middlewares/UsePermissions";
+import { officerOrDeputyToUnit } from "lib/leo/officerOrDeputyToUnit";
+import { findUnit } from "lib/leo/findUnit";
 
-const assignedUnitsInclude = {
+export const assignedUnitsInclude = {
   include: {
-    officer: { include: leoProperties },
+    officer: { include: _leoProperties },
     deputy: { include: unitProperties },
     combinedUnit: {
       include: {
         status: { include: { value: true } },
         officers: {
-          include: leoProperties,
+          include: _leoProperties,
         },
       },
     },
@@ -45,8 +45,8 @@ export const callInclude = {
   assignedUnits: assignedUnitsInclude,
   events: true,
   incidents: true,
-  departments: { include: leoProperties.department.include },
-  divisions: { include: leoProperties.division.include },
+  departments: { include: _leoProperties.department.include },
+  divisions: { include: _leoProperties.division.include },
   situationCode: { include: { value: true } },
 };
 
@@ -59,6 +59,7 @@ export class Calls911Controller {
   }
 
   @Get("/")
+  @Description("Get all 911 calls")
   async get911Calls(@QueryParams("includeEnded") includeEnded: boolean) {
     const calls = await prisma.call911.findMany({
       include: callInclude,
@@ -68,18 +69,34 @@ export class Calls911Controller {
       where: includeEnded ? undefined : { ended: false },
     });
 
-    return calls.map(this.officerOrDeputyToUnit);
+    return calls.map(officerOrDeputyToUnit);
+  }
+
+  @Get("/:id")
+  @Description("Get an incident by its id")
+  @UsePermissions({
+    permissions: [Permissions.ViewIncidents, Permissions.ManageIncidents],
+    fallback: (u) => u.isDispatch || u.isLeo,
+  })
+  async getIncidentById(@PathParams("id") id: string) {
+    const call = await prisma.call911.findUnique({
+      where: { id },
+      include: callInclude,
+    });
+
+    return officerOrDeputyToUnit(call);
   }
 
   @Post("/")
   async create911Call(
     @BodyParams() body: unknown,
     @Context("user") user: User,
-    @Context("cad") cad: cad,
+    @Context("cad") cad: cad & { miscCadSettings: MiscCadSettings },
     @HeaderParams("is-from-dispatch") isFromDispatchHeader: string | undefined,
   ) {
     const data = validateSchema(CREATE_911_CALL, body);
     const isFromDispatch = isFromDispatchHeader === "true" && user.isDispatch;
+    const maxAssignmentsToCalls = cad.miscCadSettings.maxAssignmentsToCalls ?? Infinity;
 
     const call = await prisma.call911.create({
       data: {
@@ -96,7 +113,7 @@ export class Calls911Controller {
     });
 
     const units = (data.assignedUnits ?? []) as string[];
-    await this.assignUnitsToCall(call.id, units);
+    await this.assignUnitsToCall(call.id, units, maxAssignmentsToCalls);
     await this.linkOrUnlinkCallDepartmentsAndDivisions({
       type: "connect",
       departments: (data.departments ?? []) as string[],
@@ -111,7 +128,7 @@ export class Calls911Controller {
       include: callInclude,
     });
 
-    const returnData = this.officerOrDeputyToUnit(updated);
+    const returnData = officerOrDeputyToUnit(updated);
 
     try {
       const data = this.createWebhookData(returnData);
@@ -126,15 +143,17 @@ export class Calls911Controller {
 
   @Put("/:id")
   @UsePermissions({
-    fallback: (u) => u.isDispatch,
-    permissions: [Permissions.Dispatch],
+    fallback: (u) => u.isDispatch || u.isEmsFd || u.isLeo,
+    permissions: [Permissions.Dispatch, Permissions.EmsFd, Permissions.Leo],
   })
   async update911Call(
     @PathParams("id") id: string,
     @BodyParams() body: unknown,
-    @Context() ctx: Context,
+    @Context("user") user: User,
+    @Context("cad") cad: cad & { miscCadSettings: MiscCadSettings },
   ) {
     const data = validateSchema(CREATE_911_CALL, body);
+    const maxAssignmentsToCalls = cad.miscCadSettings.maxAssignmentsToCalls ?? Infinity;
 
     const call = await prisma.call911.findUnique({
       where: {
@@ -195,7 +214,7 @@ export class Calls911Controller {
         postal: String(data.postal),
         description: data.description,
         name: data.name,
-        userId: ctx.get("user").id,
+        userId: user.id,
         positionId: shouldRemovePosition ? null : position?.id ?? call.positionId,
         descriptionData: data.descriptionData,
         situationCodeId: data.situationCode === null ? null : data.situationCode,
@@ -203,7 +222,7 @@ export class Calls911Controller {
     });
 
     const units = (data.assignedUnits ?? []) as string[];
-    await this.assignUnitsToCall(call.id, units);
+    await this.assignUnitsToCall(call.id, units, maxAssignmentsToCalls);
     await this.linkOrUnlinkCallDepartmentsAndDivisions({
       type: "connect",
       departments: (data.departments ?? []) as string[],
@@ -218,9 +237,9 @@ export class Calls911Controller {
       include: callInclude,
     });
 
-    this.socket.emitUpdate911Call(this.officerOrDeputyToUnit(updated));
+    this.socket.emitUpdate911Call(officerOrDeputyToUnit(updated));
 
-    return this.officerOrDeputyToUnit(updated);
+    return officerOrDeputyToUnit(updated);
   }
 
   @Delete("/purge")
@@ -246,8 +265,8 @@ export class Calls911Controller {
 
   @Delete("/:id")
   @UsePermissions({
-    fallback: (u) => u.isDispatch,
-    permissions: [Permissions.Dispatch],
+    fallback: (u) => u.isDispatch || u.isLeo || u.isEmsFd,
+    permissions: [Permissions.Dispatch, Permissions.Leo, Permissions.EmsFd],
   })
   async end911Call(@PathParams("id") id: string) {
     const call = await prisma.call911.findUnique({
@@ -324,7 +343,7 @@ export class Calls911Controller {
       throw new BadRequest("unitIsRequired");
     }
 
-    const { unit, type } = await findUnit(rawUnit, undefined, true);
+    const { unit, type } = await findUnit(rawUnit);
     if (!unit) {
       throw new NotFound("unitNotFound");
     }
@@ -337,10 +356,16 @@ export class Calls911Controller {
       throw new NotFound("callNotFound");
     }
 
+    const types = {
+      combined: "combinedLeoId",
+      leo: "officerId",
+      "ems-fd": "emsFdDeputyId",
+    };
+
     const existing = await prisma.assignedUnit.findFirst({
       where: {
         call911Id: callId,
-        [type === "leo" ? "officerId" : "emsFdDeputyId"]: unit.id,
+        [types[type]]: unit.id,
       },
     });
 
@@ -352,7 +377,7 @@ export class Calls911Controller {
       await prisma.assignedUnit.create({
         data: {
           call911Id: callId,
-          [type === "leo" ? "officerId" : "emsFdDeputyId"]: unit.id,
+          [types[type]]: unit.id,
         },
       });
     } else {
@@ -372,24 +397,9 @@ export class Calls911Controller {
       include: callInclude,
     });
 
-    this.socket.emitUpdate911Call(this.officerOrDeputyToUnit(updated));
+    this.socket.emitUpdate911Call(officerOrDeputyToUnit(updated));
 
-    return this.officerOrDeputyToUnit(updated);
-  }
-
-  protected officerOrDeputyToUnit(call: any & { assignedUnits: any[] }) {
-    return {
-      ...call,
-      assignedUnits: (call.assignedUnits ?? [])
-        ?.map((v: any) => ({
-          ...v,
-          officer: undefined,
-          deputy: undefined,
-
-          unit: v.officer ?? v.deputy ?? v.combinedUnit,
-        }))
-        .filter((v: any) => v.unit?.id),
-    };
+    return officerOrDeputyToUnit(updated);
   }
 
   protected async linkOrUnlinkCallDepartmentsAndDivisions({
@@ -424,16 +434,16 @@ export class Calls911Controller {
     );
   }
 
-  protected async assignUnitsToCall(callId: string, units: string[]) {
+  protected async assignUnitsToCall(
+    callId: string,
+    units: string[],
+    maxAssignmentsToCalls: number,
+  ) {
     await Promise.all(
       units.map(async (id) => {
-        const { unit, type } = await findUnit(
-          id,
-          {
-            NOT: { status: { shouldDo: ShouldDoType.SET_OFF_DUTY } },
-          },
-          true,
-        );
+        const { unit, type } = await findUnit(id, {
+          NOT: { status: { shouldDo: ShouldDoType.SET_OFF_DUTY } },
+        });
 
         if (!unit) {
           throw new BadRequest("unitOffDuty");
@@ -444,6 +454,18 @@ export class Calls911Controller {
           leo: "officerId",
           "ems-fd": "emsFdDeputyId",
         };
+
+        const assignmentCount = await prisma.assignedUnit.count({
+          where: {
+            [types[type]]: unit.id,
+            call911: { ended: false },
+          },
+        });
+
+        if (assignmentCount >= maxAssignmentsToCalls) {
+          // skip this officer
+          return;
+        }
 
         const status = await prisma.statusValue.findFirst({
           where: { shouldDo: "SET_ASSIGNED" },
@@ -506,52 +528,9 @@ export class Calls911Controller {
               value: caller,
               inline: true,
             },
-            {
-              name: "Location",
-              value: location,
-              inline: true,
-            },
           ],
         },
       ],
     };
   }
-}
-
-export async function findUnit(
-  id: string,
-  extraFind?: any,
-  searchCombined?: false,
-): Promise<{ unit: Officer | EmsFdDeputy | null; type: "leo" | "ems-fd" }>;
-export async function findUnit(
-  id: string,
-  extraFind?: any,
-  searchCombined?: true,
-): Promise<{
-  unit: Officer | EmsFdDeputy | (CombinedLeoUnit & { status: StatusValue }) | null;
-  type: "leo" | "ems-fd" | "combined";
-}>;
-export async function findUnit(id: string, extraFind?: any, searchCombined?: boolean) {
-  let type: "leo" | "ems-fd" = "leo";
-  let unit: any = await prisma.officer.findFirst({
-    where: { id, ...extraFind },
-  });
-
-  if (!unit) {
-    type = "ems-fd";
-    unit = await prisma.emsFdDeputy.findFirst({ where: { id, ...extraFind } });
-  }
-
-  if (searchCombined && !unit) {
-    unit = await prisma.combinedLeoUnit.findFirst({
-      where: {
-        id,
-      },
-      include: combinedUnitProperties,
-    });
-
-    return { type: "combined", unit: unit ?? null };
-  }
-
-  return { type, unit: unit ?? null };
 }

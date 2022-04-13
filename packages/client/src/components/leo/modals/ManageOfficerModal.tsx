@@ -7,7 +7,7 @@ import { Select } from "components/form/Select";
 import { Loader } from "components/Loader";
 import { Modal } from "components/modal/Modal";
 import { useCitizen } from "context/CitizenContext";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import { useValues } from "context/ValuesContext";
 import { Formik, FormikHelpers } from "formik";
 import { handleValidate } from "lib/handleValidate";
@@ -22,8 +22,8 @@ import type { Officer } from "@snailycad/types";
 
 interface Props {
   officer: Officer | null;
-  onCreate?: (officer: Officer) => void;
-  onUpdate?: (old: Officer, newO: Officer) => void;
+  onCreate?(officer: Officer): void;
+  onUpdate?(old: Officer, newO: Officer): void;
   onClose?(): void;
 }
 

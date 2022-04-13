@@ -1,12 +1,12 @@
 import * as React from "react";
-import { CREATE_OFFICER_SCHEMA } from "@snailycad/schemas";
+import { EMS_FD_DEPUTY_SCHEMA } from "@snailycad/schemas";
 import { Button } from "components/Button";
 import { FormField } from "components/form/FormField";
 import { Input } from "components/form/inputs/Input";
 import { Select } from "components/form/Select";
 import { Loader } from "components/Loader";
 import { Modal } from "components/modal/Modal";
-import { useModal } from "context/ModalContext";
+import { useModal } from "state/modalState";
 import { useValues } from "context/ValuesContext";
 import { Formik, FormikHelpers } from "formik";
 import { handleValidate } from "lib/handleValidate";
@@ -21,8 +21,8 @@ import type { EmsFdDeputy } from "@snailycad/types";
 
 interface Props {
   deputy: EmsFdDeputy | null;
-  onCreate?: (officer: EmsFdDeputy) => void;
-  onUpdate?: (old: EmsFdDeputy, newO: EmsFdDeputy) => void;
+  onCreate?(officer: EmsFdDeputy): void;
+  onUpdate?(old: EmsFdDeputy, newO: EmsFdDeputy): void;
   onClose?(): void;
 }
 
@@ -96,7 +96,7 @@ export function ManageDeputyModal({ deputy, onClose, onUpdate, onCreate }: Props
     }
   }
 
-  const validate = handleValidate(CREATE_OFFICER_SCHEMA);
+  const validate = handleValidate(EMS_FD_DEPUTY_SCHEMA);
   const INITIAL_VALUES = {
     citizenId: deputy?.citizenId ?? "",
     department: deputy?.departmentId ?? "",
@@ -104,9 +104,6 @@ export function ManageDeputyModal({ deputy, onClose, onUpdate, onCreate }: Props
     callsign: deputy?.callsign ?? "",
     callsign2: deputy?.callsign2 ?? "",
     division: deputy?.divisionId ?? "",
-    // simple fix. EMS/FD shares the same zod schema
-    // todo: create separate schemas
-    divisions: ["xxx"],
     badgeNumber: deputy?.badgeNumber ?? "",
     image: undefined,
   };
