@@ -15,13 +15,18 @@ const dlExamIncludes = {
   categories: { include: { value: true } },
 };
 
-@Controller("/leo/dl-exams")
+@Controller("/leo/exams")
 @UseBeforeEach(IsAuth)
-export class DLExamsController {
+export class ExamsController {
   @Get("/")
   @UsePermissions({
     fallback: (u) => u.isSupervisor,
-    permissions: [Permissions.ViewDLExams, Permissions.ManageDLExams],
+    permissions: [
+      Permissions.ViewDLExams,
+      Permissions.ManageDLExams,
+      Permissions.ViewWeaponExams,
+      Permissions.ManageWeaponExams,
+    ],
   })
   getAllDLExams() {
     const exams = prisma.dLExam.findMany({
@@ -34,7 +39,7 @@ export class DLExamsController {
   @Post("/")
   @UsePermissions({
     fallback: (u) => u.isSupervisor,
-    permissions: [Permissions.ManageDLExams],
+    permissions: [Permissions.ManageDLExams, Permissions.ManageWeaponExams],
   })
   async createDLEXam(@BodyParams() body: unknown) {
     const data = validateSchema(DL_EXAM_SCHEMA, body);
@@ -71,7 +76,7 @@ export class DLExamsController {
   @Put("/:id")
   @UsePermissions({
     fallback: (u) => u.isSupervisor,
-    permissions: [Permissions.ManageDLExams],
+    permissions: [Permissions.ManageDLExams, Permissions.ManageWeaponExams],
   })
   async updateDLEXam(@PathParams("id") examId: string, @BodyParams() body: unknown) {
     const data = validateSchema(DL_EXAM_SCHEMA, body);
@@ -120,7 +125,7 @@ export class DLExamsController {
   @Delete("/:id")
   @UsePermissions({
     fallback: (u) => u.isSupervisor,
-    permissions: [Permissions.ManageDLExams],
+    permissions: [Permissions.ManageDLExams, Permissions.ManageWeaponExams],
   })
   async deleteDLEXam(@PathParams("id") examId: string) {
     const exam = await prisma.dLExam.findUnique({

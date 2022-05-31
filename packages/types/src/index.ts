@@ -1128,6 +1128,12 @@ export interface DLExam {
 }
 
 /**
+ * Model WeaponExam
+ *
+ */
+export type WeaponExam = DLExam;
+
+/**
  * Model CustomField
  *
  */
@@ -1140,7 +1146,7 @@ export interface CustomField {
 }
 
 /**
- * Model DLExam
+ * Model CustomFieldValue
  *
  */
 export interface CustomFieldValue {
@@ -1182,6 +1188,7 @@ export enum Feature {
   COMMON_CITIZEN_CARDS = "COMMON_CITIZEN_CARDS",
   STEAM_OAUTH = "STEAM_OAUTH",
   CREATE_USER_CITIZEN_LEO = "CREATE_USER_CITIZEN_LEO",
+  WEAPON_EXAMS = "WEAPON_EXAMS",
 }
 
 export enum Rank {
