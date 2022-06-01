@@ -838,6 +838,7 @@ export interface CombinedLeoUnit {
   pairedUnitTemplate: string | null;
   officers: Officer[];
   activeCallId: string | null;
+  activeIncidentId: string | null;
 }
 
 /**
@@ -1088,6 +1089,7 @@ export interface EmsFdDeputy {
   radioChannelId: string | null;
   user: Pick<User, "id" | "username" | "steamId">;
   activeCallId: string | null;
+  activeIncidentId: string | null;
   whitelistStatusId: string | null;
   whitelistStatus?: LeoWhitelistStatus | null;
 }
@@ -1189,6 +1191,7 @@ export enum Feature {
   STEAM_OAUTH = "STEAM_OAUTH",
   CREATE_USER_CITIZEN_LEO = "CREATE_USER_CITIZEN_LEO",
   WEAPON_EXAMS = "WEAPON_EXAMS",
+  LEO_TICKETS = "LEO_TICKETS",
 }
 
 export enum Rank {
