@@ -32,12 +32,13 @@ export default function ManageCustomRoles({ customRoles: data }: Props) {
   const { openModal, closeModal } = useModal();
   const t = useTranslations("Management");
   const common = useTranslations("Common");
+  const hasManagePermissions = hasPermissions([Permissions.ManageCustomRoles], true);
 
   async function handleDelete() {
     if (!tempRole) return;
 
     const { json } = await execute<DeleteCustomRoleByIdData>({
-      path: `/admin/manage/custom-fields/${tempRole.id}`,
+      path: `/admin/manage/custom-roles/${tempRole.id}`,
       method: "DELETE",
     });
 
@@ -80,9 +81,11 @@ export default function ManageCustomRoles({ customRoles: data }: Props) {
         </div>
 
         <div>
-          <Button onClick={() => openModal(ModalIds.ManageCustomRole)}>
-            {t("createCustomRole")}
-          </Button>
+          {hasManagePermissions ? (
+            <Button onClick={() => openModal(ModalIds.ManageCustomRole)}>
+              {t("createCustomRole")}
+            </Button>
+          ) : null}
         </div>
       </header>
 
@@ -114,9 +117,7 @@ export default function ManageCustomRoles({ customRoles: data }: Props) {
             { Header: common("name"), accessor: "name" },
             { Header: "Permissions", accessor: "permissions" },
             { Header: common("createdAt"), accessor: "createdAt" },
-            hasPermissions([Permissions.ViewCustomFields], true)
-              ? { Header: common("actions"), accessor: "actions" }
-              : null,
+            hasManagePermissions ? { Header: common("actions"), accessor: "actions" } : null,
           ]}
         />
       )}

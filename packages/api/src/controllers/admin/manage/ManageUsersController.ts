@@ -41,6 +41,7 @@ const manageUsersSelect = (selectCitizens: boolean) =>
     ...(selectCitizens ? { citizens: { include: citizenInclude } } : {}),
     apiToken: { include: { logs: { take: 35, orderBy: { createdAt: "desc" } } } },
     roles: true,
+    User2FA: true,
   } as const);
 
 @UseBeforeEach(IsAuth)
@@ -115,7 +116,13 @@ export class ManageUsersController {
       throw new NotFound("userNotFound");
     }
 
-    return user;
+    const { User2FA, ...rest } = user;
+    const _user = {
+      twoFactorEnabled: User2FA.length >= 1,
+      ...rest,
+    };
+
+    return _user;
   }
 
   @Post("/search")
@@ -179,6 +186,7 @@ export class ManageUsersController {
   async updateUserRolesById(
     @PathParams("id") userId: string,
     @BodyParams() body: unknown,
+    @Context("cad") cad: { discordRolesId: string | null },
   ): Promise<APITypes.PutManageUserByIdRolesData> {
     const data = validateSchema(ROLES_SCHEMA, body);
     const user = await prisma.user.findUnique({ where: { id: userId }, include: { roles: true } });
@@ -206,6 +214,10 @@ export class ManageUsersController {
       where: { id: user.id },
       select: manageUsersSelect(false),
     });
+
+    if (updated.discordId) {
+      await updateMemberRoles(updated, cad.discordRolesId);
+    }
 
     return updated;
   }
@@ -449,6 +461,29 @@ export class ManageUsersController {
 
     await prisma.apiToken.delete({
       where: { id: user.apiTokenId },
+    });
+
+    return true;
+  }
+
+  @Delete("/:userId/2fa")
+  @UsePermissions({
+    fallback: (u) => u.rank !== Rank.USER,
+    permissions: [Permissions.ManageUsers],
+  })
+  async disableUser2FA(
+    @PathParams("userId") userId: string,
+  ): Promise<APITypes.DeleteManageUserRevokeApiTokenData> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFound("notFound");
+    }
+
+    await prisma.user2FA.deleteMany({
+      where: { userId: user.id },
     });
 
     return true;
