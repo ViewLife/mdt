@@ -4,12 +4,12 @@ import path from "node:path";
 const cwd = process.cwd();
 
 export async function getNextI18Config() {
-  const nextConfig = (await (await import("../../next.config")).default) as any;
+  const nextConfig = await (await import("../../next.config")).default;
   return nextConfig.i18n;
 }
 
 export async function getTranslations(types: string[], locale = "en") {
-  const typesWithCommon = [...new Set(["common", ...types])];
+  const typesWithCommon = [...new Set(["common", "auth", ...types])];
   const paths = typesWithCommon.map((type) => path.join(cwd, `locales/${locale}/${type}.json`));
   const i18n = await getNextI18Config();
 

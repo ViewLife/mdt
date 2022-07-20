@@ -301,7 +301,7 @@ export type Call911 = Prisma.Call911 & {
 export type Position = Prisma.Position;
 
 export type AssignedUnit = Prisma.AssignedUnit & {
-  unit: Officer | CombinedLeoUnit | EmsFdDeputy;
+  unit?: Officer | CombinedLeoUnit | EmsFdDeputy;
 };
 
 export type AssignedWarrantOfficer = Prisma.AssignedWarrantOfficer & {
@@ -309,7 +309,7 @@ export type AssignedWarrantOfficer = Prisma.AssignedWarrantOfficer & {
 };
 
 export type IncidentInvolvedUnit = Prisma.IncidentInvolvedUnit & {
-  unit: Officer | CombinedLeoUnit | EmsFdDeputy;
+  unit?: Officer | CombinedLeoUnit | EmsFdDeputy;
 };
 
 export type Call911Event = Prisma.Call911Event;
@@ -319,7 +319,7 @@ export type Bolo = Prisma.Bolo & {
 };
 
 export type Record = Prisma.Record & {
-  officer: Officer;
+  officer?: Officer | null;
   violations: Violation[];
   seizedItems?: Prisma.SeizedItem[];
 };
@@ -329,7 +329,7 @@ export type RecordRelease = Prisma.RecordRelease & {
 };
 
 export type Warrant = Prisma.Warrant & {
-  officer?: Officer;
+  officer?: Officer | null;
 };
 
 export type RecordLog = Prisma.RecordLog & {

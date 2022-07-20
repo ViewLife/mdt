@@ -77,7 +77,7 @@ export class RecordsController {
     @Context("activeOfficer") activeOfficer: (CombinedLeoUnit & { officers: Officer[] }) | Officer,
   ): Promise<APITypes.PostCreateWarrantData> {
     const data = validateSchema(CREATE_WARRANT_SCHEMA, body);
-    const officer = getFirstOfficerFromActiveOfficer({ activeOfficer });
+    const officer = getFirstOfficerFromActiveOfficer({ activeOfficer, allowDispatch: true });
 
     const citizen = await prisma.citizen.findUnique({
       where: {
@@ -92,7 +92,7 @@ export class RecordsController {
     const warrant = await prisma.warrant.create({
       data: {
         citizenId: citizen.id,
-        officerId: officer.id,
+        officerId: officer?.id ?? null,
         description: data.description,
         status: data.status as WarrantStatus,
       },
@@ -110,6 +110,10 @@ export class RecordsController {
 
     const updated = await prisma.warrant.findUniqueOrThrow({
       where: { id: warrant.id },
+      include: {
+        citizen: true,
+        officer: true,
+      },
     });
 
     await this.handleDiscordWebhook(updated);
@@ -195,7 +199,7 @@ export class RecordsController {
     @Context("activeOfficer") activeOfficer: (CombinedLeoUnit & { officers: Officer[] }) | Officer,
   ): Promise<APITypes.PostRecordsData> {
     const data = validateSchema(CREATE_TICKET_SCHEMA, body);
-    const officer = getFirstOfficerFromActiveOfficer({ activeOfficer });
+    const officer = getFirstOfficerFromActiveOfficer({ activeOfficer, allowDispatch: true });
 
     const citizen = await prisma.citizen.findUnique({
       where: {
@@ -218,7 +222,7 @@ export class RecordsController {
       data: {
         type: data.type as RecordType,
         citizenId: citizen.id,
-        officerId: officer.id,
+        officerId: officer?.id ?? null,
         notes: data.notes,
         postal: String(data.postal),
         status: recordStatus,
@@ -279,7 +283,7 @@ export class RecordsController {
       },
     });
 
-    await this.handleDiscordWebhook({ ...ticket, violations, seizedItems });
+    await this.handleDiscordWebhook({ ...ticket, violations });
 
     return { ...ticket, violations, seizedItems };
   }
@@ -397,7 +401,9 @@ export class RecordsController {
     return true;
   }
 
-  private async handleDiscordWebhook(ticket: any) {
+  private async handleDiscordWebhook(
+    ticket: ((Record & { violations: Violation[] }) | Warrant) & { citizen: Citizen },
+  ) {
     try {
       const data = createWebhookData(ticket);
       await sendDiscordWebhook(DiscordWebhookType.CITIZEN_RECORD, data);
@@ -424,7 +430,7 @@ async function unlinkSeizedItems(items: Pick<SeizedItem, "id">[]) {
 }
 
 function createWebhookData(
-  data: ((Record & { violations: Violation[] }) | Warrant) & { citizen: Citizen; officer: any },
+  data: ((Record & { violations: Violation[] }) | Warrant) & { citizen: Citizen },
 ) {
   const isWarrant = !("notes" in data);
   const citizen = `${data.citizen.name} ${data.citizen.surname}`;
@@ -465,7 +471,12 @@ function createWebhookData(
   };
 
   function getTotal(name: "jailTime" | "fine" | "bail") {
-    const total = !isWarrant ? data.violations.reduce((ac, cv) => ac + (cv[name] || 0), 0) : null;
+    const total = !isWarrant
+      ? data.violations.reduce((ac, cv) => {
+          return ac + (cv[name] || 0);
+        }, 0)
+      : null;
+
     return String(total);
   }
 }
