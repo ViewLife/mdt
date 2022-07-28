@@ -1,6 +1,6 @@
 {
   "name": "@snailycad/client",
-  "version": "1.18.0",
+  "version": "1.18.2",
   "scripts": {
     "dev": "yarn rimraf .env && yarn next dev",
     "watch": "npm run dev",
@@ -33,11 +33,11 @@
     "@react-aria/ssr": "^3.2.0",
     "@sentry/react": "^7.7.0",
     "@sentry/tracing": "^7.7.0",
-    "@snailycad/config": "1.18.0",
-    "@snailycad/permissions": "1.18.0",
-    "@snailycad/schemas": "1.18.0",
-    "@snailycad/types": "1.18.0",
-    "@snailycad/utils": "1.18.0",
+    "@snailycad/config": "1.18.2",
+    "@snailycad/permissions": "1.18.2",
+    "@snailycad/schemas": "1.18.2",
+    "@snailycad/types": "1.18.2",
+    "@snailycad/utils": "1.18.2",
     "@tanstack/react-virtual": "^3.0.0-alpha.0",
     "@tanstack/virtual-core": "^3.0.0-alpha.1",
     "axios": "^0.27.2",
@@ -76,7 +76,7 @@
     "type-fest": "^2.17.0",
     "uuid": "^8.3.2",
     "zod": "^3.17.10",
-    "zustand": "^3.7.2"
+    "zustand": "^4.0.0"
   },
   "devDependencies": {
     "@types/leaflet": "^1.7.11",
@@ -91,7 +91,7 @@
     "sass": "^1.54.0",
     "tailwindcss": "^3.1.6",
     "typescript": "^4.7.4",
-    "vite": "^3.0.2",
-    "vitest": "^0.18.1"
+    "vite": "^3.0.3",
+    "vitest": "^0.19.1"
   }
 }
