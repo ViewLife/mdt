@@ -1,14 +1,13 @@
 import { Editor, Element as SlateElement, Descendant } from "slate";
 
-export function dataToString(data: Descendant[]) {
+export function dataToString(data: Descendant[] | null) {
   const string: string[] = [];
+  if (!data) return "";
 
   for (const item of data) {
     if (Editor.isEditor(item)) continue;
 
     if (SlateElement.isElement(item) && item.type === "bulleted-list") {
-      console.log({ list: item });
-
       const children = item.children.flatMap((c) => c.children).map((v) => v.text);
 
       string.push(children.join(" "));
