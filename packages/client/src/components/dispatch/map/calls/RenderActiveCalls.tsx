@@ -2,17 +2,18 @@ import * as React from "react";
 import type { LeafletEvent } from "leaflet";
 import useFetch from "lib/useFetch";
 import { Marker, Popup, useMap } from "react-leaflet";
-import { Full911Call, useDispatchState } from "state/dispatchState";
+import type { Full911Call } from "state/dispatch/dispatchState";
 import { ActiveMapCalls } from "./ActiveMapCalls";
 import { convertToMap } from "lib/map/utils";
 import { Button } from "components/Button";
 import { useTranslations } from "next-intl";
 import type { Put911CallByIdData } from "@snailycad/types/api";
+import { useCall911State } from "state/dispatch/call911State";
 
 export function RenderActiveCalls() {
   const map = useMap();
   const { execute } = useFetch();
-  const { calls, setCalls } = useDispatchState();
+  const { calls, setCalls } = useCall911State();
   const t = useTranslations("Calls");
   const [openItems, setOpenItems] = React.useState<string[]>([]);
 
@@ -42,8 +43,9 @@ export function RenderActiveCalls() {
       data: {
         ...data,
         situationCode: call.situationCodeId,
-        divisions: call.divisions?.map((v) => v.id),
-        departments: call.departments?.map((v) => v.id),
+        divisions: undefined,
+        departments: undefined,
+        assignedUnits: undefined,
       },
     });
 
@@ -66,8 +68,9 @@ export function RenderActiveCalls() {
       data: {
         ...callData,
         situationCode: call.situationCodeId,
-        divisions: call.divisions?.map((v) => v.id),
-        departments: call.departments?.map((v) => v.id),
+        divisions: undefined,
+        departments: undefined,
+        assignedUnits: undefined,
       },
     });
 

@@ -3,12 +3,12 @@ import { useTranslations } from "use-intl";
 import { Layout } from "components/Layout";
 import { getSessionUser } from "lib/auth";
 import { getTranslations } from "lib/getTranslation";
-import { makeUnitName, requestAll } from "lib/utils";
+import { getObjLength, isEmpty, makeUnitName, requestAll } from "lib/utils";
 import type { GetServerSideProps } from "next";
 import type { AssignedUnit } from "@snailycad/types";
-import { IndeterminateCheckbox, Table } from "components/shared/Table";
+import { Table, useAsyncTable, useTableState } from "components/shared/Table";
 import { useGenerateCallsign } from "hooks/useGenerateCallsign";
-import { Full911Call, useDispatchState } from "state/dispatchState";
+import { Full911Call, useDispatchState } from "state/dispatch/dispatchState";
 import { Button } from "components/Button";
 import { useModal } from "state/modalState";
 import { ModalIds } from "types/ModalIds";
@@ -21,11 +21,9 @@ import { Title } from "components/shared/Title";
 import dynamic from "next/dynamic";
 import { FullDate } from "components/shared/FullDate";
 import { AlertModal } from "components/modal/AlertModal";
-import { useTableSelect } from "hooks/shared/useTableSelect";
 import { Manage911CallModal } from "components/dispatch/modals/Manage911CallModal";
 import { isUnitCombined } from "@snailycad/utils";
 import { usePermission, Permissions } from "hooks/usePermission";
-import { Checkbox } from "components/form/inputs/Checkbox";
 import type {
   DeletePurge911CallsData,
   Get911CallsData,
@@ -33,6 +31,7 @@ import type {
   GetIncidentsData,
 } from "@snailycad/types/api";
 import { useTemporaryItem } from "hooks/shared/useTemporaryItem";
+import { getSelectedTableRows } from "hooks/shared/table/useTableState";
 
 const DescriptionModal = dynamic(
   async () => (await import("components/modal/DescriptionModal/DescriptionModal")).DescriptionModal,
@@ -44,15 +43,25 @@ interface Props extends GetDispatchData {
 }
 
 export default function CallHistory({ data, incidents, officers, deputies }: Props) {
-  const [calls, setCalls] = React.useState(data);
-  const [search, setSearch] = React.useState("");
   const dispatchState = useDispatchState();
   const { hasPermissions } = usePermission();
   const hasManagePermissions = hasPermissions([Permissions.ManageCallHistory], true);
-  const [tempCall, callState] = useTemporaryItem(calls);
 
+  const asyncTable = useAsyncTable({
+    fetchOptions: {
+      path: "/911-calls?includeEnded=true&take=35",
+      onResponse: (json: Get911CallsData) => ({ data: json.calls, totalCount: json.totalCount }),
+    },
+    totalCount: data.totalCount,
+    initialData: data.calls,
+  });
+
+  const tableState = useTableState({
+    pagination: asyncTable.pagination,
+    search: { value: asyncTable.search.search, setValue: asyncTable.search.setSearch },
+  });
   const { state, execute } = useFetch();
-  const tableSelect = useTableSelect(calls);
+  const [tempCall, callState] = useTemporaryItem(asyncTable.data);
 
   const { openModal, closeModal } = useModal();
   const t = useTranslations("Calls");
@@ -71,16 +80,18 @@ export default function CallHistory({ data, incidents, officers, deputies }: Pro
   }
 
   async function handlePurge() {
+    const selectedRows = getSelectedTableRows(asyncTable.data, tableState.rowSelection);
+    if (selectedRows.length <= 0) return;
+
     const { json } = await execute<DeletePurge911CallsData>({
       path: "/911-calls/purge",
       method: "DELETE",
-      data: { ids: tableSelect.selectedRows },
+      data: { ids: selectedRows },
     });
 
     if (json) {
-      const selectedRows = tableSelect.selectedRows;
-      const updatedCalls = calls.filter((call) => !selectedRows.includes(call.id));
-      setCalls(updatedCalls);
+      const updatedCalls = asyncTable.data.filter((call) => !selectedRows.includes(call.id));
+      asyncTable.setData(updatedCalls);
 
       closeModal(ModalIds.AlertPurgeCalls);
     }
@@ -115,19 +126,22 @@ export default function CallHistory({ data, incidents, officers, deputies }: Pro
     >
       <Title>{leo("callHistory")}</Title>
 
-      {calls.length <= 0 ? (
+      {data.calls.length <= 0 ? (
         <p className="mt-5">{"No calls ended yet."}</p>
       ) : (
         <>
           <div className="mb-2">
             <FormField label={common("search")} className="my-2">
               <div className="flex gap-2">
-                <Input onChange={(e) => setSearch(e.target.value)} value={search} />
+                <Input
+                  onChange={(e) => asyncTable.search.setSearch(e.target.value)}
+                  value={asyncTable.search.search}
+                />
                 {hasManagePermissions ? (
                   <Button
                     onClick={() => openModal(ModalIds.AlertPurgeCalls)}
                     className="flex items-center gap-2 ml-2 min-w-fit"
-                    disabled={state === "loading" || tableSelect.selectedRows.length <= 0}
+                    disabled={state === "loading" || isEmpty(tableState.rowSelection)}
                   >
                     {state === "loading" ? <Loader /> : null}
                     {t("purgeSelected")}
@@ -137,20 +151,20 @@ export default function CallHistory({ data, incidents, officers, deputies }: Pro
             </FormField>
           </div>
 
+          {asyncTable.search.search && asyncTable.pagination.totalDataCount !== data.totalCount ? (
+            <p className="italic text-base font-semibold">
+              Showing {asyncTable.pagination.totalDataCount} result(s)
+            </p>
+          ) : null}
+
           <Table
-            disabledColumnId={["checkbox"]}
-            filter={search}
-            defaultSort={{ columnId: "createdAt", descending: false }}
-            data={calls.map((call) => {
+            tableState={tableState}
+            features={{ rowSelection: hasManagePermissions }}
+            data={asyncTable.data.map((call) => {
               const caseNumbers = (call.incidents ?? []).map((i) => `#${i.caseNumber}`).join(", ");
 
               return {
-                checkbox: (
-                  <Checkbox
-                    checked={tableSelect.selectedRows.includes(call.id)}
-                    onChange={() => tableSelect.handleCheckboxChange(call)}
-                  />
-                ),
+                id: call.id,
                 rowProps: { call },
                 caller: call.name,
                 location: call.location,
@@ -181,26 +195,14 @@ export default function CallHistory({ data, incidents, officers, deputies }: Pro
               };
             })}
             columns={[
-              hasManagePermissions
-                ? {
-                    Header: (
-                      <IndeterminateCheckbox
-                        onChange={tableSelect.handleAllCheckboxes}
-                        checked={tableSelect.isTopCheckboxChecked}
-                        indeterminate={tableSelect.isIntermediate}
-                      />
-                    ),
-                    accessor: "checkbox",
-                  }
-                : null,
-              { Header: t("caller"), accessor: "caller" },
-              { Header: t("location"), accessor: "location" },
-              { Header: t("postal"), accessor: "postal" },
-              { Header: common("description"), accessor: "description" },
-              { Header: t("assignedUnits"), accessor: "assignedUnits" },
-              { Header: leo("caseNumbers"), accessor: "caseNumbers" },
-              { Header: common("createdAt"), accessor: "createdAt" },
-              { Header: common("actions"), accessor: "actions" },
+              { header: t("caller"), accessorKey: "caller" },
+              { header: t("location"), accessorKey: "location" },
+              { header: t("postal"), accessorKey: "postal" },
+              { header: common("description"), accessorKey: "description" },
+              { header: t("assignedUnits"), accessorKey: "assignedUnits" },
+              { header: leo("caseNumbers"), accessorKey: "caseNumbers" },
+              { header: common("createdAt"), accessorKey: "createdAt" },
+              { header: common("actions"), accessorKey: "actions" },
             ]}
           />
         </>
@@ -208,7 +210,7 @@ export default function CallHistory({ data, incidents, officers, deputies }: Pro
 
       <LinkCallToIncidentModal
         onSave={(call) => {
-          setCalls((calls) =>
+          asyncTable.setData((calls) =>
             calls.map((c) => {
               if (c.id === call.id) {
                 return call;
@@ -224,7 +226,7 @@ export default function CallHistory({ data, incidents, officers, deputies }: Pro
       <AlertModal
         title={t("purgeSelectedCalls")}
         description={t.rich("alert_purgeSelectedCalls", {
-          length: tableSelect.selectedRows.length,
+          length: getObjLength(tableState.rowSelection),
         })}
         id={ModalIds.AlertPurgeCalls}
         onDeleteClick={handlePurge}
@@ -246,7 +248,7 @@ export default function CallHistory({ data, incidents, officers, deputies }: Pro
 export const getServerSideProps: GetServerSideProps = async ({ req, locale }) => {
   const user = await getSessionUser(req);
   const [calls, { incidents }, { deputies, officers }] = await requestAll(req, [
-    ["/911-calls?includeEnded=true", []],
+    ["/911-calls?includeEnded=true&take=35", []],
     ["/incidents", { incidents: [] }],
     ["/dispatch", { deputies: [], officers: [] }],
   ]);
