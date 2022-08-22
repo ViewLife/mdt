@@ -4,7 +4,6 @@ import { useRouter } from "next/router";
 import { Full911Call, useDispatchState } from "state/dispatch/dispatchState";
 import type { AssignedUnit } from "@snailycad/types";
 import { useTranslations } from "use-intl";
-import dynamic from "next/dynamic";
 import useFetch from "lib/useFetch";
 import { useLeoState } from "state/leoState";
 import { useEmsFdState } from "state/emsFdState";
@@ -27,10 +26,6 @@ import { ActiveCallsActionsColumn } from "./ActionsColumn";
 import { useCall911State } from "state/dispatch/call911State";
 import { useActiveCalls } from "hooks/realtime/useActiveCalls";
 
-const DescriptionModal = dynamic(
-  async () => (await import("components/modal/DescriptionModal/DescriptionModal")).DescriptionModal,
-);
-
 interface Props {
   initialData: Get911CallsData;
 }
@@ -41,6 +36,7 @@ function _ActiveCalls({ initialData }: Props) {
   const call911State = useCall911State();
   const isMounted = useMounted();
   const calls = isMounted ? call911State.calls : initialData.calls;
+  const hasCalls = isMounted ? call911State.calls.length >= 1 : initialData.totalCount >= 1;
 
   const t = useTranslations("Calls");
   const leo = useTranslations("Leo");
@@ -54,6 +50,7 @@ function _ActiveCalls({ initialData }: Props) {
   const { search, setSearch } = useCallsFilters();
 
   const asyncTable = useAsyncTable({
+    disabled: !CALLS_911,
     fetchOptions: {
       path: "/911-calls",
       onResponse: (json: Get911CallsData) => ({
@@ -124,10 +121,10 @@ function _ActiveCalls({ initialData }: Props) {
     <div className="overflow-hidden rounded-md card">
       {audio.addedToCallAudio}
       {audio.incomingCallAudio}
-      <ActiveCallsHeader search={asyncTable.search} calls={calls} />
+      <ActiveCallsHeader hasCalls={hasCalls} search={asyncTable.search} calls={calls} />
 
       <div className="px-4">
-        {calls.length <= 0 && asyncTable.state !== "loading" && !asyncTable.search.search ? (
+        {!hasCalls && asyncTable.state !== "loading" && !asyncTable.search.search ? (
           <p className="py-2 text-neutral-700 dark:text-gray-300">{t("no911Calls")}</p>
         ) : (
           <Table
@@ -196,13 +193,6 @@ function _ActiveCalls({ initialData }: Props) {
       ) : null}
 
       <DispatchCallTowModal call={call911State.currentlySelectedCall} />
-      {call911State.currentlySelectedCall?.descriptionData ? (
-        <DescriptionModal
-          onClose={() => call911State.setCurrentlySelectedCall(null)}
-          value={call911State.currentlySelectedCall.descriptionData}
-        />
-      ) : null}
-
       <Manage911CallModal
         setCall={call911State.setCurrentlySelectedCall}
         onClose={() => call911State.setCurrentlySelectedCall(null)}

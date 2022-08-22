@@ -1,4 +1,4 @@
-import { DEFAULT_EDITOR_DATA, Editor } from "components/modal/DescriptionModal/Editor";
+import { DEFAULT_EDITOR_DATA, Editor } from "components/editor/Editor";
 import { HoverCard } from "components/shared/HoverCard";
 import { classNames } from "lib/classNames";
 import { dataToString } from "lib/editor/dataToString";
@@ -7,21 +7,22 @@ import { useTranslations } from "next-intl";
 import type { Descendant } from "slate";
 
 interface Props {
-  data: { descriptionData?: any; description: string | null };
+  data: { descriptionData?: any; description?: string | null };
+  nonCard?: boolean;
 }
 
-export function CallDescription({ data }: Props) {
+export function CallDescription({ data, nonCard }: Props) {
   const common = useTranslations("Common");
 
   const stringDescription =
-    dataToString(data.descriptionData as Descendant[] | null) ?? data.description;
+    dataToString(data.descriptionData as Descendant[] | null) || data.description;
 
   if (!stringDescription) {
     return <>{common("none")}</>;
   }
 
   const isDescriptionLengthy = stringDescription.length >= 1;
-  const shouldTruncate = stringDescription.length > 25;
+  const shouldTruncate = stringDescription.length > 45;
   const hoverCardDisabled =
     !shouldTruncate || isArrayEqual(data.descriptionData as any, DEFAULT_EDITOR_DATA);
 
@@ -32,12 +33,13 @@ export function CallDescription({ data }: Props) {
 
   return (
     <HoverCard
+      pointerEvents
       disabled={hoverCardDisabled}
       trigger={
         <div
           className={classNames(
-            "w-[300px] truncate overflow-hidden",
-            shouldTruncate && "truncate-custom",
+            "w-[300px] truncate overflow-hidden cursor-help",
+            shouldTruncate && (nonCard ? "truncate-custom-non-card" : "truncate-custom"),
           )}
         >
           {data.description || stringDescription}

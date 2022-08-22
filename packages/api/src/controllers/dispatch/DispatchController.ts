@@ -43,7 +43,11 @@ export class DispatchController {
   async getDispatchData(
     @Context("cad") cad: { miscCadSettings: MiscCadSettings | null },
   ): Promise<APITypes.GetDispatchData> {
-    const unitsInactivityFilter = getInactivityFilter(cad, "lastStatusChangeTimestamp");
+    const unitsInactivityFilter = getInactivityFilter(
+      cad,
+      "unitInactivityTimeout",
+      "lastStatusChangeTimestamp",
+    );
 
     if (unitsInactivityFilter) {
       setInactiveUnitsOffDuty(unitsInactivityFilter.lastStatusChangeTimestamp);
@@ -70,13 +74,13 @@ export class DispatchController {
       },
     });
 
-    const inactivityFilter = getInactivityFilter(cad);
-    if (inactivityFilter) {
-      this.endInactiveIncidents(inactivityFilter.updatedAt);
+    const incidentInactivityFilter = getInactivityFilter(cad, "incidentInactivityTimeout");
+    if (incidentInactivityFilter) {
+      this.endInactiveIncidents(incidentInactivityFilter.updatedAt);
     }
 
     const activeIncidents = await prisma.leoIncident.findMany({
-      where: { isActive: true, ...(inactivityFilter?.filter ?? {}) },
+      where: { isActive: true, ...(incidentInactivityFilter?.filter ?? {}) },
       include: incidentInclude,
     });
 
@@ -166,7 +170,7 @@ export class DispatchController {
   ): Promise<APITypes.PostDispatchDispatchersStateData> {
     let dispatcher = await prisma.activeDispatchers.findFirst({
       where: { userId: user.id },
-      include: { user: { select: userProperties } },
+      include: { user: { select: userProperties() } },
     });
 
     if (value) {
@@ -174,7 +178,7 @@ export class DispatchController {
         dispatcher ??
         (await prisma.activeDispatchers.create({
           data: { userId: user.id },
-          include: { user: { select: userProperties } },
+          include: { user: { select: userProperties() } },
         }));
     } else {
       if (dispatcher) {

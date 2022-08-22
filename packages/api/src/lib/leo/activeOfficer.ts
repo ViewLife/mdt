@@ -11,7 +11,7 @@ export const unitProperties = {
   division: { include: { value: true, department: true } },
   status: { include: { value: true } },
   citizen: { select: { name: true, surname: true, id: true } },
-  user: { select: userProperties },
+  user: { select: userProperties() },
   IncidentInvolvedUnit: { where: { incident: { isActive: true } }, select: { id: true } },
   whitelistStatus: { include: { department: { include: { value: true } } } },
   rank: true,
@@ -24,7 +24,7 @@ export const _leoProperties = {
   status: { include: { value: true } },
   citizen: { select: { name: true, surname: true, id: true } },
   whitelistStatus: { include: { department: { include: { value: true } } } },
-  user: { select: userProperties },
+  user: { select: userProperties() },
   IncidentInvolvedUnit: { where: { incident: { isActive: true } }, select: { id: true } },
   rank: true,
   callsigns: true,
@@ -86,7 +86,11 @@ export async function getActiveOfficer(
   });
 
   const cad = await prisma.cad.findFirst({ include: { miscCadSettings: true } });
-  const unitsInactivityFilter = getInactivityFilter(cad!, "lastStatusChangeTimestamp");
+  const unitsInactivityFilter = getInactivityFilter(
+    cad!,
+    "unitInactivityTimeout",
+    "lastStatusChangeTimestamp",
+  );
 
   const filters: Prisma.Enumerable<Prisma.OfficerWhereInput> = [
     { status: { shouldDo: "SET_OFF_DUTY" } },

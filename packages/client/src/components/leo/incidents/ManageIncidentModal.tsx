@@ -17,7 +17,7 @@ import { Toggle } from "components/form/Toggle";
 import { FormRow } from "components/form/FormRow";
 import { useLeoState } from "state/leoState";
 import { useRouter } from "next/router";
-import { dataToSlate, Editor } from "components/modal/DescriptionModal/Editor";
+import { dataToSlate, Editor } from "components/editor/Editor";
 import { IncidentEventsArea } from "./IncidentEventsArea";
 import { classNames } from "lib/classNames";
 import { useActiveIncidents } from "hooks/realtime/useActiveIncidents";
@@ -151,6 +151,7 @@ export function ManageIncidentModal({
               <div>
                 <FormField errorMessage={errors.unitsInvolved as string} label={t("unitsInvolved")}>
                   <Select
+                    closeMenuOnSelect={false}
                     disabled={areFieldsDisabled}
                     isMulti
                     value={values.unitsInvolved}
