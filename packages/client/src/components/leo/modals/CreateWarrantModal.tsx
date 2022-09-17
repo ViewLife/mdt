@@ -20,16 +20,18 @@ import { isUnitCombined } from "@snailycad/utils";
 import { makeUnitName } from "lib/utils";
 import { useGenerateCallsign } from "hooks/useGenerateCallsign";
 import { useActiveOfficers } from "hooks/realtime/useActiveOfficers";
+import Image from "next/future/image";
 
 interface Props {
   onClose?(): void;
   warrant: ActiveWarrant | null;
+  readOnly?: boolean;
 
   onUpdate?(previous: ActiveWarrant, newWarrant: PutWarrantsData): void;
   onCreate?(warrant: PostCreateWarrantData): void;
 }
 
-export function CreateWarrantModal({ warrant, onClose, onCreate, onUpdate }: Props) {
+export function CreateWarrantModal({ warrant, readOnly, onClose, onCreate, onUpdate }: Props) {
   const { isOpen, closeModal, getPayload } = useModal();
   const { state, execute } = useFetch();
   const common = useTranslations("Common");
@@ -68,12 +70,24 @@ export function CreateWarrantModal({ warrant, onClose, onCreate, onUpdate }: Pro
         onUpdate?.(warrant, json);
       }
     } else {
-      const { json } = await execute<PostCreateWarrantData, typeof INITIAL_VALUES>({
+      const { json, error } = await execute<PostCreateWarrantData, typeof INITIAL_VALUES>({
         path: "/records/create-warrant",
         method: "POST",
         data,
         helpers,
+        noToast: "warrantApprovalRequired",
       });
+
+      if (error === "warrantApprovalRequired") {
+        toastMessage({
+          title: common("success"),
+          message: t("warrantCreatedButApprovalRequired"),
+          icon: "success",
+        });
+
+        handleClose();
+        return;
+      }
 
       if (json.id) {
         toastMessage({
@@ -121,6 +135,7 @@ export function CreateWarrantModal({ warrant, onClose, onCreate, onUpdate }: Pro
                   name: "citizenName",
                   onChange: handleChange,
                   errorMessage: errors.citizenId,
+                  disabled: readOnly,
                 }}
                 onSuggestionClick={(suggestion) => {
                   setFieldValue("citizenId", suggestion.id);
@@ -135,11 +150,14 @@ export function CreateWarrantModal({ warrant, onClose, onCreate, onUpdate }: Pro
                   <div className="flex items-center">
                     <div className="mr-2 min-w-[25px]">
                       {suggestion.imageId ? (
-                        <img
-                          className="rounded-md w-[35px] h-[35px] object-cover"
+                        <Image
+                          className="rounded-md w-[30px] h-[30px] object-cover mr-2"
                           draggable={false}
-                          src={makeImageUrl("citizens", suggestion.imageId)}
+                          src={makeImageUrl("citizens", suggestion.imageId)!}
                           loading="lazy"
+                          width={30}
+                          height={30}
+                          alt={`${suggestion.name} ${suggestion.surname}`}
                         />
                       ) : (
                         <PersonFill className="text-gray-500/60 w-[25px] h-[25px]" />
@@ -156,6 +174,7 @@ export function CreateWarrantModal({ warrant, onClose, onCreate, onUpdate }: Pro
             {isActive ? (
               <FormField label="Assigned Officers">
                 <Select
+                  disabled={readOnly}
                   closeMenuOnSelect={false}
                   isMulti
                   name="assignedOfficers"
@@ -173,6 +192,7 @@ export function CreateWarrantModal({ warrant, onClose, onCreate, onUpdate }: Pro
 
             <FormField errorMessage={errors.status} label={t("status")}>
               <Select
+                disabled={readOnly}
                 values={[
                   { label: "Active", value: "ACTIVE" },
                   { label: "Inactive", value: "INACTIVE" },
@@ -184,7 +204,12 @@ export function CreateWarrantModal({ warrant, onClose, onCreate, onUpdate }: Pro
             </FormField>
 
             <FormField errorMessage={errors.description} label={common("description")}>
-              <Textarea name="description" onChange={handleChange} value={values.description} />
+              <Textarea
+                disabled={readOnly}
+                name="description"
+                onChange={handleChange}
+                value={values.description}
+              />
             </FormField>
 
             <footer className="flex justify-end mt-5">
@@ -193,7 +218,7 @@ export function CreateWarrantModal({ warrant, onClose, onCreate, onUpdate }: Pro
               </Button>
               <Button
                 className="flex items-center"
-                disabled={!isValid || state === "loading"}
+                disabled={readOnly || !isValid || state === "loading"}
                 type="submit"
               >
                 {state === "loading" ? <Loader className="mr-2" /> : null}

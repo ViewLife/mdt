@@ -36,7 +36,7 @@ export function ActiveMapUnits({ players, openItems, setOpenItems }: Props) {
     createPortal(
       <div
         id="map-calls"
-        className="fixed z-50 p-3 top-20 right-4 w-80 rounded-md shadow bg-gray-50 dark:bg-dark-bg dark:text-white"
+        className="fixed z-50 p-3 top-20 right-4 w-80 rounded-md shadow bg-gray-50 dark:bg-tertiary dark:border dark:border-secondary dark:text-white"
       >
         <h1 className="text-xl font-semibold">{t("activeUnits")}</h1>
         {units.length <= 0 ? (
@@ -71,11 +71,15 @@ function makeActiveUnits({ players, activeOfficers, activeDeputies }: ActiveUnit
 
   for (const activeUnit of [..._activeOfficers, ...activeDeputies]) {
     const steamId = activeUnit.user.steamId;
-    const player = players.find((v) => "steamId" in v && v.steamId === steamId);
+    const player = players.find(
+      (v) =>
+        ("steamId" in v && v.steamId === steamId) ||
+        ("convertedSteamId" in v && v.convertedSteamId === steamId),
+    );
 
     if (!player || !("steamId" in player)) continue;
 
-    const existing = activeUnits.some((v) => v.steamId === player.steamId);
+    const existing = activeUnits.some((v) => v.steamId === player.convertedSteamId);
 
     if (player && !existing) {
       activeUnits.push({ ...player, unit: activeUnit });

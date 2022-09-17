@@ -7,16 +7,17 @@ import { Input } from "./Input";
 import { useModal } from "state/modalState";
 import { ModalIds } from "types/ModalIds";
 import { CropImageModal } from "components/modal/CropImageModal";
-import { AllowedFileExtension, allowedFileExtensions, IMGUR_REGEX } from "@snailycad/config";
+import { AllowedFileExtension, allowedFileExtensions, IMAGES_REGEX } from "@snailycad/config";
 
 interface Props {
   setImage: React.Dispatch<React.SetStateAction<(File | string) | null>>;
   image: (File | string) | null;
   label?: string;
   valueKey?: string;
+  hideLabel?: boolean;
 }
 
-export function ImageSelectInput({ label, valueKey = "image", image, setImage }: Props) {
+export function ImageSelectInput({ label, hideLabel, valueKey = "image", image, setImage }: Props) {
   const [useURL, setUseURL] = React.useState(false);
   const { errors, values, setFieldValue, handleChange } = useFormikContext<any>();
   const common = useTranslations("Common");
@@ -34,7 +35,11 @@ export function ImageSelectInput({ label, valueKey = "image", image, setImage }:
   }
 
   return useURL ? (
-    <FormField optional errorMessage={errors[valueKey] as string} label={label ?? common("image")}>
+    <FormField
+      optional
+      errorMessage={errors[valueKey] as string}
+      label={hideLabel ? null : label ?? common("image")}
+    >
       <div className="flex gap-2">
         <Input
           placeholder="https://i.imgur.com/xxxxxx"
@@ -57,7 +62,7 @@ export function ImageSelectInput({ label, valueKey = "image", image, setImage }:
       <FormField
         optional
         errorMessage={errors[valueKey] as string}
-        label={label ?? common("image")}
+        label={hideLabel ? null : label ?? common("image")}
       >
         <div className="flex">
           <Input
@@ -111,7 +116,7 @@ export function validateFile(image: File | string | null, helpers: FormikHelpers
   if (typeof image === "string") {
     if (image.trim() === "") return null;
 
-    if (!image.match(IMGUR_REGEX)) {
+    if (!image.match(IMAGES_REGEX)) {
       throw helpers.setFieldError("image", "Image URL must match https://i.imgur.com/xxxxxx");
     }
 

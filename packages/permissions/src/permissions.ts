@@ -21,6 +21,7 @@ export enum Permissions {
   DeleteCitizenRecords = "DeleteCitizenRecords",
   ManageCustomRoles = "ManageCustomRoles",
   ViewCustomRoles = "ViewCustomRoles",
+  ManageWarrants = "ManageWarrants",
 
   Dispatch = "Dispatch",
   EmsFd = "EmsFd",
@@ -61,6 +62,8 @@ export enum Permissions {
 
   ViewNameChangeRequests = "ViewNameChangeRequests",
   ManageNameChangeRequests = "ManageNameChangeRequests",
+
+  ManagePendingWarrants = "ManagePendingWarrants",
 
   ManageCourthousePosts = "ManageCourthousePosts",
 

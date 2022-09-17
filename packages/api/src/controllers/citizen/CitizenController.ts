@@ -22,7 +22,7 @@ import type * as APITypes from "@snailycad/types/api";
 import { getImageWebPPath } from "utils/image";
 
 export const citizenInclude = {
-  user: { select: userProperties() },
+  user: { select: userProperties },
   flags: true,
   vehicles: {
     orderBy: { createdAt: "desc" },
@@ -102,14 +102,12 @@ export class CitizenController {
       ],
     };
 
-    const [citizensCount, citizens] = await Promise.all([
-      await prisma.citizen.count({
-        where,
-      }),
-      await prisma.citizen.findMany({
+    const [citizensCount, citizens] = await prisma.$transaction([
+      prisma.citizen.count({ where }),
+      prisma.citizen.findMany({
         where,
         orderBy: { updatedAt: "desc" },
-        include: { user: { select: userProperties() } },
+        include: { user: { select: userProperties } },
         skip,
         take: 35,
       }),

@@ -6,6 +6,9 @@ import { Button } from "components/Button";
 import type { MapPlayer, PlayerDataEventPayload } from "types/Map";
 import { icon as leafletIcon } from "leaflet";
 import { useTranslations } from "next-intl";
+import { MapItem, useDispatchMapState } from "state/mapState";
+import { useAuth } from "context/AuthContext";
+import { generateMarkerTypes } from "../RenderMapBlips";
 
 interface Props {
   player: MapPlayer | PlayerDataEventPayload;
@@ -22,6 +25,19 @@ const PLAYER_ICON = leafletIcon({
 export function PlayerMarker({ player, handleToggle }: Props) {
   const map = useMap();
   const t = useTranslations("Leo");
+  const { user } = useAuth();
+  const { hiddenItems } = useDispatchMapState();
+  const markerTypes = React.useMemo(generateMarkerTypes, []);
+
+  const playerIcon = React.useMemo(() => {
+    const playerIcon = markerTypes[parseInt(player.icon, 10)];
+
+    if (playerIcon) {
+      return leafletIcon(playerIcon);
+    }
+
+    return PLAYER_ICON;
+  }, [player.icon, markerTypes]);
 
   const pos = React.useMemo(
     () => player.pos?.x && player.pos.y && convertToMap(player.pos.x, player.pos.y, map),
@@ -47,8 +63,25 @@ export function PlayerMarker({ player, handleToggle }: Props) {
       fallback: player.isEmsFd,
     });
 
+  // eslint-disable-next-line eqeqeq
+  const hasUnit = isCADUser && player.unit != null;
+
+  const showUnitsOnly = hiddenItems[MapItem.UNITS_ONLY];
+  const playerSteamId = "convertedSteamId" in player ? player.convertedSteamId : null;
+
+  if (showUnitsOnly) {
+    if (!hasUnit || playerSteamId !== user?.steamId) {
+      return null;
+    }
+  }
+
   return (
-    <Marker icon={PLAYER_ICON} key={player.identifier} position={pos}>
+    <Marker
+      ref={(ref) => (player.ref = ref)}
+      icon={playerIcon}
+      key={player.identifier}
+      position={pos}
+    >
       <Tooltip direction="top">{player.name}</Tooltip>
 
       <Popup minWidth={500}>
@@ -90,7 +123,7 @@ export function PlayerMarker({ player, handleToggle }: Props) {
           <strong>{t("identifier")}: </strong> {player.identifier}
         </p>
 
-        {"id" in player ? (
+        {"id" in player && player.unit?.id ? (
           <div className="mt-3">
             <Button size="xs" className="!text-base" onClick={() => handleToggle(player.id)}>
               {t("togglePlayer")}

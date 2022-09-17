@@ -50,7 +50,7 @@ export class AccountController {
       data: {
         apiTokenId: apiToken.id,
       },
-      select: userProperties({ type: "all" }),
+      select: userProperties,
     });
 
     return updatedUser;
@@ -69,14 +69,12 @@ export class AccountController {
       throw new BadRequest("noApiTokenId");
     }
 
-    const updated = await prisma.apiToken.update({
-      where: {
-        id: user.apiTokenId,
-      },
+    const updated = await prisma.user.update({
+      where: { id: user.id },
       data: {
-        token: nanoid(56),
+        apiToken: { update: { token: nanoid(56) } },
       },
-      select: userProperties({ type: "all" }),
+      select: userProperties,
     });
 
     return updated;

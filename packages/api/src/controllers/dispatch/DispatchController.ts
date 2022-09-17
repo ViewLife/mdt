@@ -1,6 +1,6 @@
 import { Controller } from "@tsed/di";
 import { Description, Get, Post, Put } from "@tsed/schema";
-import { BodyParams, PathParams, Context } from "@tsed/platform-params";
+import { QueryParams, BodyParams, PathParams, Context } from "@tsed/platform-params";
 import { BadRequest } from "@tsed/exceptions";
 import { prisma } from "lib/prisma";
 import { Socket } from "services/SocketService";
@@ -23,7 +23,6 @@ import { officerOrDeputyToUnit } from "lib/leo/officerOrDeputyToUnit";
 import { findUnit } from "lib/leo/findUnit";
 import { getInactivityFilter } from "lib/leo/utils";
 import { filterInactiveUnits, setInactiveUnitsOffDuty } from "lib/leo/setInactiveUnitsOffDuty";
-import { Req } from "@tsed/common";
 import { getActiveDeputy } from "lib/ems-fd";
 import type * as APITypes from "@snailycad/types/api";
 
@@ -53,13 +52,9 @@ export class DispatchController {
       setInactiveUnitsOffDuty(unitsInactivityFilter.lastStatusChangeTimestamp);
     }
 
-    const [officers, units] = await Promise.all([
-      await prisma.officer.findMany({
-        include: leoProperties,
-      }),
-      await prisma.combinedLeoUnit.findMany({
-        include: combinedUnitProperties,
-      }),
+    const [officers, units] = await prisma.$transaction([
+      prisma.officer.findMany({ include: leoProperties }),
+      prisma.combinedLeoUnit.findMany({ include: combinedUnitProperties }),
     ]);
 
     const deputies = await prisma.emsFdDeputy.findMany({
@@ -170,7 +165,7 @@ export class DispatchController {
   ): Promise<APITypes.PostDispatchDispatchersStateData> {
     let dispatcher = await prisma.activeDispatchers.findFirst({
       where: { userId: user.id },
-      include: { user: { select: userProperties() } },
+      include: { user: { select: userProperties } },
     });
 
     if (value) {
@@ -178,7 +173,7 @@ export class DispatchController {
         dispatcher ??
         (await prisma.activeDispatchers.create({
           data: { userId: user.id },
-          include: { user: { select: userProperties() } },
+          include: { user: { select: userProperties } },
         }));
     } else {
       if (dispatcher) {
@@ -238,16 +233,55 @@ export class DispatchController {
     return updated;
   }
 
+  @Get("/players")
+  @UsePermissions({
+    fallback: (u) => u.isDispatch,
+    permissions: [Permissions.Dispatch, Permissions.LiveMap],
+  })
+  async getCADUsersBySteamIds(
+    @QueryParams("steamIds", String) steamIds: string,
+    @Context() ctx: Context,
+  ) {
+    const users = [];
+
+    for (const steamId of steamIds.split(",")) {
+      const user = await prisma.user.findFirst({
+        where: { steamId },
+        select: {
+          username: true,
+          id: true,
+          isEmsFd: true,
+          isLeo: true,
+          isDispatch: true,
+          permissions: true,
+          rank: true,
+          steamId: true,
+        },
+      });
+
+      if (!user) {
+        continue;
+      }
+
+      const [officer, deputy] = await Promise.all([
+        getActiveOfficer({ user, ctx }).catch(() => null),
+        getActiveDeputy({ user, ctx }).catch(() => null),
+      ]);
+
+      const unit = officer ?? deputy ?? null;
+
+      users.push({ ...user, unit });
+    }
+
+    return users;
+  }
+
   @Get("/players/:steamId")
   @UsePermissions({
     fallback: (u) => u.isDispatch,
     permissions: [Permissions.Dispatch, Permissions.LiveMap],
   })
-  async findUserBySteamId(
-    @Req() req: Req,
-    @PathParams("steamId") steamId: string,
-    @Context() ctx: Context,
-  ) {
+  async findUserBySteamId(@PathParams("steamId") steamId: string, @Context() ctx: Context) {
     const user = await prisma.user.findFirst({
       where: { steamId },
       select: {
@@ -267,15 +301,11 @@ export class DispatchController {
     }
 
     const [officer, deputy] = await Promise.all([
-      getActiveOfficer(req, user, ctx),
-      getActiveDeputy(req, user, ctx),
+      getActiveOfficer({ user, ctx }).catch(() => null),
+      getActiveDeputy({ user, ctx }).catch(() => null),
     ]);
 
     const unit = officer ?? deputy ?? null;
-
-    if (!unit) {
-      return null;
-    }
 
     return { ...user, unit };
   }

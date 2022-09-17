@@ -1,5 +1,5 @@
 import type { EmsFdDeputy, Officer, User } from "@snailycad/types";
-import type { PointTuple, LatLngLiteral } from "leaflet";
+import type { PointTuple, LatLngLiteral, Icon, Marker } from "leaflet";
 
 export interface Player {
   Weapon?: string;
@@ -41,7 +41,7 @@ export interface Blip {
   pos: LatLngLiteral;
   rawPos?: XYZ;
   type: number;
-  icon: L.Icon | undefined;
+  icon?: Icon | undefined;
 }
 
 export interface MarkerType {
@@ -55,8 +55,12 @@ export interface MarkerType {
 
 export type BlipsData = Record<number, (XYZ | { pos: XYZ })[]>;
 
-export type PlayerDataEventPayload = PlayerDataEvent["payload"][number];
+export type PlayerDataEventPayload = PlayerDataEvent["payload"][number] & {
+  ref?: Marker | null;
+  convertedSteamId?: string | null;
+};
 export interface MapPlayer extends User, PlayerDataEventPayload {
   unit: EmsFdDeputy | Officer | null;
   convertedSteamId: string | null;
+  ref: Marker | null;
 }

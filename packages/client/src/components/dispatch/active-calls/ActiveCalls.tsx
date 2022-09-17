@@ -118,13 +118,13 @@ function _ActiveCalls({ initialData }: Props) {
   }
 
   return (
-    <div className="overflow-hidden rounded-md card">
+    <div className="rounded-md card">
       {audio.addedToCallAudio}
       {audio.incomingCallAudio}
-      <ActiveCallsHeader hasCalls={hasCalls} search={asyncTable.search} calls={calls} />
+      <ActiveCallsHeader search={asyncTable.search} calls={calls} />
 
       <div className="px-4">
-        {!hasCalls && asyncTable.state !== "loading" && !asyncTable.search.search ? (
+        {!hasCalls ? (
           <p className="py-2 text-neutral-700 dark:text-gray-300">{t("no911Calls")}</p>
         ) : (
           <Table
@@ -136,7 +136,7 @@ function _ActiveCalls({ initialData }: Props) {
               return {
                 id: call.id,
                 rowProps: {
-                  className: isUnitAssigned ? "bg-gray-200 dark:bg-[#333639]" : undefined,
+                  className: isUnitAssigned ? "bg-gray-200 dark:bg-quinary" : undefined,
                 },
                 caseNumber: `#${call.caseNumber}`,
                 name: `${call.name} ${call.viaDispatch ? `(${leo("dispatch")})` : ""}`,
@@ -181,7 +181,7 @@ function _ActiveCalls({ initialData }: Props) {
         <Droppable onDrop={handleUnassign} accepts={[DndActions.UnassignUnitFrom911Call]}>
           <div
             className={classNames(
-              "grid place-items-center z-50 border-2 border-slate-500 bg-gray-400 dark:bg-gray-4 fixed bottom-3 left-3 right-4 h-60 shadow-sm rounded-md transition-opacity",
+              "grid place-items-center z-50 border-2 border-slate-500 bg-gray-400 dark:bg-quinary fixed bottom-3 left-3 right-4 h-60 shadow-sm rounded-md transition-opacity",
               draggingUnit === "call"
                 ? "pointer-events-all opacity-100"
                 : "pointer-events-none opacity-0",

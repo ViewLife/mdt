@@ -12,23 +12,22 @@ const CallsFilters = dynamic(async () => (await import("./CallsFilters")).CallsF
 interface Props {
   calls: Full911Call[];
   search: ReturnType<typeof useAsyncTable>["search"];
-  hasCalls: boolean;
 }
 
-export function ActiveCallsHeader({ calls, search, hasCalls }: Props) {
+export function ActiveCallsHeader({ calls, search }: Props) {
   const { setShowFilters, showFilters } = useCallsFilters();
   const t = useTranslations("Calls");
 
   return (
     <>
-      <header className="flex items-center justify-between p-2 px-4 bg-gray-200 dark:bg-gray-3">
+      <header className="flex items-center justify-between p-2 px-4 bg-gray-200 dark:bg-secondary">
         <h1 className="text-xl font-semibold">{t("active911Calls")}</h1>
         <div>
           <Button
             variant="cancel"
             className={classNames(
-              "px-1.5 hover:bg-gray-500 dark:hover:bg-dark-bg group",
-              showFilters && "dark:!bg-dark-bg !bg-gray-500",
+              "px-1.5 dark:border dark:border-quinary dark:bg-tertiary dark:hover:brightness-125 group",
+              showFilters && "dark:!bg-secondary !bg-gray-500",
             )}
             onClick={() => setShowFilters(!showFilters)}
             title={t("callFilters")}
@@ -42,11 +41,11 @@ export function ActiveCallsHeader({ calls, search, hasCalls }: Props) {
         </div>
       </header>
 
-      {!hasCalls && search.state !== "loading" && !search.search ? null : (
+      {showFilters ? (
         <div className="px-4">
           <CallsFilters search={search} calls={calls} />
         </div>
-      )}
+      ) : null}
     </>
   );
 }

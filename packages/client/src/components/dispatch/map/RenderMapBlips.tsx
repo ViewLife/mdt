@@ -1,15 +1,15 @@
 import * as React from "react";
-import * as L from "leaflet";
-import { Marker, Popup, useMap } from "react-leaflet";
+import { icon as leafletIcon } from "leaflet";
+import { Marker, Tooltip, useMap } from "react-leaflet";
 import { convertToMap } from "lib/map/utils";
 import { blipTypes } from "lib/map/blips";
 import { BLIP_SIZES, Blip, BlipsData, MarkerType } from "types/Map";
-import { useDispatchMapState } from "state/mapState";
+import { MapItem, useDispatchMapState } from "state/mapState";
 
 export function RenderMapBlips() {
   const map = useMap();
   const [blips, setBlips] = React.useState<Blip[]>([]);
-  const { blipsHidden } = useDispatchMapState();
+  const { hiddenItems } = useDispatchMapState();
 
   const doBlips = React.useCallback(async () => {
     setBlips(await generateBlips(map));
@@ -19,7 +19,7 @@ export function RenderMapBlips() {
     doBlips();
   }, [doBlips]);
 
-  if (blipsHidden) {
+  if (hiddenItems[MapItem.BLIPS]) {
     return null;
   }
 
@@ -33,11 +33,7 @@ export function RenderMapBlips() {
             key={`${blip.name}-${idx}`}
             position={blip.pos}
           >
-            <Popup>
-              <p className="text-base !m-0">
-                <strong>Name: </strong> {blip.type} - {blip.name}
-              </p>
-            </Popup>
+            <Tooltip direction="top">{blip.name}</Tooltip>
           </Marker>
         );
       })}
@@ -51,39 +47,37 @@ async function generateBlips(map: L.Map) {
     .catch(() => ({}));
 
   const markerTypes = generateMarkerTypes();
-  const createdBlips: Blip[] = [];
 
-  for (const id in blipsData) {
-    if (!blipsData[id]) continue;
+  const blipsToProcess = Object.entries(blipsData);
 
-    const blipArray = blipsData[id];
-
-    for (const i in blipArray) {
-      const blipData = blipArray[+i];
-      if (!blipData) continue;
-
-      const markerData = markerTypes[id];
-      const pos =
-        "pos" in blipData ? blipData.pos : { x: blipData.x, y: blipData.y, z: blipData.z };
-
-      const converted = convertToMap(pos.x, pos.y, map);
-      const blip: Blip = {
-        name: markerData?.name ?? id,
-        description: null,
-        pos: converted,
-        rawPos: pos,
-        type: Number(id),
-        icon: markerData ? L.icon(markerData) : undefined,
+  const blipsPositions = blipsToProcess.flatMap(([blipId, blipData]) => {
+    return blipData.flatMap((data) => {
+      return {
+        x: "x" in data ? data.x : data.pos.x,
+        y: "y" in data ? data.y : data.pos.y,
+        z: "z" in data ? data.z : data.pos.z,
+        blipId: parseInt(blipId, 10),
       };
+    });
+  });
 
-      createdBlips.push(blip);
-    }
-  }
+  const blips: Blip[] = blipsPositions.map((blipPosition) => {
+    const markerData = markerTypes[blipPosition.blipId];
 
-  return createdBlips;
+    return {
+      name: markerData?.name ?? String(blipPosition.blipId),
+      description: null,
+      pos: convertToMap(blipPosition.x, blipPosition.y, map),
+      rawPos: blipPosition,
+      type: blipPosition.blipId,
+      icon: markerData ? leafletIcon(markerData) : undefined,
+    };
+  });
+
+  return blips;
 }
 
-function generateMarkerTypes() {
+export function generateMarkerTypes() {
   const markerTypes: Record<number, MarkerType> = {};
 
   let blipCss = `.blip {

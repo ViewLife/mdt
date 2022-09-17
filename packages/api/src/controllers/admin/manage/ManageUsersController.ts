@@ -28,7 +28,6 @@ import { genSaltSync, hashSync } from "bcrypt";
 import { citizenInclude } from "controllers/citizen/CitizenController";
 import { validateSchema } from "lib/validateSchema";
 import { ExtendedBadRequest } from "src/exceptions/ExtendedBadRequest";
-import { updateMemberRoles } from "lib/discord/admin";
 import { isDiscordIdInUse } from "utils/discord";
 import { UsePermissions, Permissions } from "middlewares/UsePermissions";
 import { isFeatureEnabled } from "lib/cad";
@@ -37,7 +36,7 @@ import type * as APITypes from "@snailycad/types/api";
 
 const manageUsersSelect = (selectCitizens: boolean) =>
   ({
-    ...userProperties({ type: "all" }),
+    ...userProperties,
     ...(selectCitizens ? { citizens: { include: citizenInclude } } : {}),
     apiToken: { include: { logs: { take: 35, orderBy: { createdAt: "desc" } } } },
     roles: true,
@@ -77,14 +76,14 @@ export class ManageUsersController {
           }
         : undefined;
 
-    const [totalCount, pendingCount] = await Promise.all([
+    const [totalCount, pendingCount] = await prisma.$transaction([
       prisma.user.count({ where }),
       prisma.user.count({ where: { whitelistStatus: WhitelistStatus.PENDING } }),
     ]);
 
     const shouldIncludeAll = includeAll;
     const users = await prisma.user.findMany({
-      select: userProperties({ type: "all" }),
+      select: userProperties,
       where,
       take: shouldIncludeAll ? undefined : 35,
       skip: shouldIncludeAll ? undefined : Number(skip),
@@ -135,7 +134,7 @@ export class ManageUsersController {
   ): Promise<APITypes.PostManageUsersSearchData> {
     const users = await prisma.user.findMany({
       where: { username: { contains: username, mode: "insensitive" } },
-      select: userProperties({ type: "server" }),
+      select: userProperties,
       take: 35,
     });
 
@@ -186,7 +185,6 @@ export class ManageUsersController {
   async updateUserRolesById(
     @PathParams("id") userId: string,
     @BodyParams() body: unknown,
-    @Context("cad") cad: { discordRolesId: string | null },
   ): Promise<APITypes.PutManageUserByIdRolesData> {
     const data = validateSchema(ROLES_SCHEMA, body);
     const user = await prisma.user.findUnique({ where: { id: userId }, include: { roles: true } });
@@ -215,10 +213,6 @@ export class ManageUsersController {
       select: manageUsersSelect(false),
     });
 
-    if (updated.discordId) {
-      await updateMemberRoles(updated, cad.discordRolesId);
-    }
-
     return updated;
   }
 
@@ -228,7 +222,6 @@ export class ManageUsersController {
     permissions: [Permissions.ManageUsers, Permissions.BanUsers, Permissions.DeleteUsers],
   })
   async updateUserById(
-    @Context("cad") cad: { discordRolesId: string | null },
     @PathParams("id") userId: string,
     @BodyParams() body: unknown,
   ): Promise<APITypes.PutManageUserByIdData> {
@@ -264,10 +257,6 @@ export class ManageUsersController {
       },
       select: manageUsersSelect(false),
     });
-
-    if (updated.discordId) {
-      await updateMemberRoles(updated, cad.discordRolesId);
-    }
 
     return updated;
   }
@@ -349,7 +338,7 @@ export class ManageUsersController {
         banReason: banType === "ban" ? data?.reason : null,
         banned: banType === "ban",
       },
-      select: userProperties({ type: "all" }),
+      select: userProperties,
     });
 
     if (banType === "ban") {
@@ -397,7 +386,6 @@ export class ManageUsersController {
   async acceptOrDeclineUser(
     @PathParams("id") userId: string,
     @PathParams("type") type: "accept" | "decline",
-    @Context("cad") cad: cad & { discordRolesId: string | null },
   ): Promise<APITypes.PostManageUserAcceptDeclineData> {
     if (!["accept", "decline"].includes(type)) {
       throw new BadRequest("invalidType");
@@ -416,16 +404,10 @@ export class ManageUsersController {
     }
 
     const whitelistStatus = type === "accept" ? WhitelistStatus.ACCEPTED : WhitelistStatus.DECLINED;
-    const updated = await prisma.user.update({
-      where: {
-        id: user.id,
-      },
+    await prisma.user.update({
+      where: { id: user.id },
       data: { whitelistStatus },
     });
-
-    if (updated.discordId && cad.whitelisted) {
-      await updateMemberRoles(updated, cad.discordRolesId);
-    }
 
     return true;
   }

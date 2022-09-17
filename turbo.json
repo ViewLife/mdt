@@ -1,39 +1,22 @@
 {
   "$schema": "https://turborepo.org/schema.json",
-  "baseBranch": "origin/main",
   "pipeline": {
     "copy-env": {
-      "dependsOn": [
-        "^copy-env",
-        "$POSTGRES_PASSWORD",
-        "$POSTGRES_USER",
-        "$DB_HOST",
-        "$POSTGRES_DB",
-        "$DATABASE_URL",
-        "$CORS_ORIGIN_URL",
-        "$PORT_API",
-        "$JWT_SECRET",
-        "$NEXT_PUBLIC_PROD_ORIGIN",
-        "$NODE_ENV",
-        "$DISCORD_CLIENT_ID",
-        "$DISCORD_CLIENT_SECRET",
-        "$ENCRYPTION_TOKEN",
-        "$DOMAIN",
-        "$SECURE_COOKIES_FOR_IFRAME",
-        "$PORT_CLIENT"
-      ],
+      "dependsOn": ["^copy-env"],
       "outputs": [".env"],
       "cache": false
     },
+    "create-images-domain": {
+      "dependsOn": ["^create-images-domain"],
+      "outputs": ["next.config.js"],
+      "cache": false
+    },
+    "validate-locales": {
+      "dependsOn": ["^validate-locales"],
+      "cache": false
+    },
     "build": {
-      "dependsOn": [
-        "copy-env",
-        "^build",
-        "$CORS_ORIGIN_URL",
-        "$NEXT_PUBLIC_PROD_ORIGIN",
-        "$NODE_ENV",
-        "$IFRAME_SUPPORT_ENABLED"
-      ],
+      "dependsOn": ["copy-env", "create-images-domain", "validate-locales", "^build"],
       "outputs": [".next/**", "dist/**"],
       "cache": false
     },
@@ -43,6 +26,7 @@
     },
     "test": {
       "dependsOn": ["^test"],
+      "inputs": ["src/**/*.tsx", "src/**/*.ts", "tests/**/*.test.ts"],
       "outputs": []
     },
     "watch": {

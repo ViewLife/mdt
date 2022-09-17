@@ -57,8 +57,8 @@ export function Table<TData extends _RowData>({
 
   const tableActionsAlignment = user?.tableActionsAlignment ?? TableActionsAlignment.LEFT;
   const stickyBgColor = features?.isWithinCard
-    ? "bg-gray-100 dark:bg-gray-2"
-    : "dark:bg-dark-bg bg-white";
+    ? "bg-gray-100 dark:bg-tertiary"
+    : "dark:bg-primary bg-white";
 
   const tableColumns = React.useMemo(() => {
     const cols = orderColumnsByTableActionsAlignment(tableActionsAlignment, columns);
@@ -131,7 +131,7 @@ export function Table<TData extends _RowData>({
         containerProps?.className,
       )}
     >
-      <table className="w-full overflow-hidden whitespace-nowrap max-h-64">
+      <table className="w-full whitespace-nowrap max-h-64">
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>

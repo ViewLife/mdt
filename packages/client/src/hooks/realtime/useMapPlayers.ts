@@ -6,6 +6,7 @@ import type {
   PlayerLeftEvent,
   MapPlayer,
   PlayerDataEventPayload,
+  Player,
 } from "types/Map";
 import { useAuth } from "context/AuthContext";
 import useFetch from "lib/useFetch";
@@ -15,75 +16,98 @@ import { omit } from "lib/utils";
 import type { GetDispatchPlayerBySteamIdData } from "@snailycad/types/api";
 
 export function useMapPlayers() {
-  const [players, setPlayers] = React.useState<(MapPlayer | PlayerDataEventPayload)[]>([]);
+  const [players, setPlayers] = React.useState<Map<string, MapPlayer | PlayerDataEventPayload>>(
+    new Map<string, MapPlayer | PlayerDataEventPayload>(),
+  );
   const [socket, setSocket] = React.useState<WebSocket | null>(null);
+  const [prevPlayerData, setPrevPlayerData] = React.useState<GetDispatchPlayerBySteamIdData[]>([]);
 
   const { cad } = useAuth();
   const url = getCADURL(cad);
   const { execute } = useFetch();
 
-  const handleSearchPlayer = React.useCallback(
-    async (steamId: string | null, player: PlayerDataEventPayload) => {
-      const existing = players.find((v) =>
-        "steamId" in v ? v.steamId === steamId : v.identifier === player.identifier,
-      );
+  const getCADUsers = React.useCallback(
+    async (
+      steamIds: (Player & { convertedSteamId?: string | null })[],
+      payload: PlayerDataEventPayload[],
+    ) => {
+      let _prevPlayerData = prevPlayerData;
 
-      if (existing) {
-        const copied = [...players];
-        const idx = copied.findIndex((v) => v.identifier === player.identifier);
+      const { json } =
+        steamIds.length <= 0
+          ? { json: prevPlayerData }
+          : await execute<GetDispatchPlayerBySteamIdData[]>({
+              path: "/dispatch/players",
+              params: {
+                steamIds: steamIds.map((s) => s.convertedSteamId).join(","),
+              },
+              noToast: true,
+            });
 
-        const omittedExisting = omit(existing, [
-          "License Plate",
-          "Vehicle",
-          "Location",
-          "Weapon",
-          "icon",
-          "pos",
-        ]);
-
-        copied[idx] = { ...omittedExisting, ...player, convertedSteamId: steamId };
-        setPlayers(copied);
-
-        return;
+      if (steamIds.length >= 1) {
+        _prevPlayerData = json;
+        setPrevPlayerData(json);
       }
 
-      const { json } = await execute<GetDispatchPlayerBySteamIdData>({
-        path: `/dispatch/players/${steamId}`,
-        method: "GET",
-      });
+      const newMap = new Map();
 
-      if (!json.steamId) {
-        setPlayers((p) => [...p, player]);
-        return;
+      for (const player of payload) {
+        const steamId = steamIds.find((v) => v.identifier === player.identifier)?.convertedSteamId;
+        const user = _prevPlayerData.find((v) => v.steamId === steamId);
+        const existing = players.get(player.identifier);
+
+        if (existing) {
+          const omittedExisting = omit(existing, [
+            "License Plate",
+            "Vehicle",
+            "Location",
+            "Weapon",
+            "icon",
+            "pos",
+          ]);
+
+          newMap.set(String(player.identifier), {
+            ...omittedExisting,
+            ...existing,
+            ...player,
+          });
+
+          continue;
+        }
+
+        if (!player.identifier) continue;
+        newMap.set(player.identifier, { convertedSteamId: steamId, ...player, ...user });
       }
 
-      const data = { ...player, ...json, convertedSteamId: steamId };
-      setPlayers((p) => [...p, data]);
+      setPlayers(newMap);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [players],
+    [players, prevPlayerData], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const onPlayerData = React.useCallback(
     async (data: PlayerDataEvent) => {
-      for (const player of data.payload) {
-        if (!player.identifier) continue;
-        if (!player.identifier.startsWith("steam:")) {
-          await handleSearchPlayer(null, player);
-          continue;
-        }
+      const usersToFetch = data.payload
+        .map((player) => {
+          const steamId = player.identifier?.replace("steam:", "");
+          const convertedSteamId = new BN(steamId, 16).toString();
+          return { ...player, convertedSteamId };
+        })
+        .filter((player) => {
+          if (players.has(player.identifier)) return false;
+          if (player.identifier?.startsWith("steam:")) return true;
+          return false;
+        });
 
-        const steamId = player.identifier.replace("steam:", "");
-        const convertedSteamId = new BN(steamId, 16).toString();
-
-        await handleSearchPlayer(convertedSteamId, player);
-      }
+      await getCADUsers(usersToFetch, data.payload);
     },
-    [handleSearchPlayer],
+    [getCADUsers, players],
   );
 
   const onPlayerLeft = React.useCallback((data: PlayerLeftEvent) => {
-    setPlayers((p) => p.filter((v) => v.identifier !== data.payload));
+    setPlayers((map) => {
+      map.delete(data.payload);
+      return map;
+    });
   }, []);
 
   const onMessage = React.useCallback(

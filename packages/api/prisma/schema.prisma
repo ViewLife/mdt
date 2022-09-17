@@ -75,9 +75,11 @@ model MiscCadSettings {
   inactivityTimeout         Int?
   jailTimeScale             JailTimeScale?
 
-  call911InactivityTimeout  Int?
-  incidentInactivityTimeout Int?
-  unitInactivityTimeout     Int?
+  call911InactivityTimeout        Int?
+  incidentInactivityTimeout       Int?
+  unitInactivityTimeout           Int?
+  boloInactivityTimeout           Int?
+  activeWarrantsInactivityTimeout Int?
 
   /// deprecated, use `webhooks` instead
   call911WebhookId     String?
@@ -204,36 +206,38 @@ model DiscordRole {
 }
 
 model User {
-  id                       String                @id @default(cuid())
-  username                 String                @unique @db.VarChar(255)
-  password                 String                @db.Text
-  rank                     Rank                  @default(USER)
-  isLeo                    Boolean               @default(false)
-  isSupervisor             Boolean               @default(false)
-  isEmsFd                  Boolean               @default(false)
-  isDispatch               Boolean               @default(false)
-  isTow                    Boolean               @default(false)
-  isTaxi                   Boolean               @default(true)
-  banned                   Boolean               @default(false)
+  id                       String                    @id @default(cuid())
+  username                 String                    @unique @db.VarChar(255)
+  password                 String                    @db.Text
+  rank                     Rank                      @default(USER)
+  isLeo                    Boolean                   @default(false)
+  isSupervisor             Boolean                   @default(false)
+  isEmsFd                  Boolean                   @default(false)
+  isDispatch               Boolean                   @default(false)
+  isTow                    Boolean                   @default(false)
+  isTaxi                   Boolean                   @default(true)
+  banned                   Boolean                   @default(false)
   banReason                String?
-  avatarUrl                String?               @db.Text
-  steamId                  String?               @db.VarChar(255)
-  whitelistStatus          WhitelistStatus       @default(ACCEPTED)
-  isDarkTheme              Boolean               @default(true)
+  avatarUrl                String?                   @db.Text
+  steamId                  String?                   @db.VarChar(255)
+  whitelistStatus          WhitelistStatus           @default(ACCEPTED)
+  isDarkTheme              Boolean                   @default(true)
   tempPassword             String?
-  statusViewMode           StatusViewMode        @default(DOT_COLOR)
-  tableActionsAlignment    TableActionsAlignment @default(RIGHT)
-  createdAt                DateTime              @default(now())
-  updatedAt                DateTime              @default(now()) @updatedAt
+  statusViewMode           StatusViewMode            @default(DOT_COLOR)
+  tableActionsAlignment    TableActionsAlignment     @default(RIGHT)
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @default(now()) @updatedAt
   discordId                String?
   lastDiscordSyncTimestamp DateTime?
   permissions              String[]
-  soundSettings            UserSoundSettings?    @relation(fields: [soundSettingsId], references: [id])
+  soundSettings            UserSoundSettings?        @relation(fields: [soundSettingsId], references: [id])
   soundSettingsId          String?
-  apiToken                 ApiToken?             @relation(fields: [apiTokenId], references: [id])
+  apiToken                 ApiToken?                 @relation(fields: [apiTokenId], references: [id])
   apiTokenId               String?
   roles                    CustomRole[]
   locale                   String?
+  sessions                 UserSession[]
+  toAddDefaultPermissions  ToAddDefaultPermissions[]
 
   // relational data
   citizens             Citizen[]
@@ -255,6 +259,25 @@ model User {
   User2FA              User2FA[]
   NameChangeRequest    NameChangeRequest[]
   CourthousePost       CourthousePost[]
+}
+
+model UserSession {
+  id           String   @id @default(cuid())
+  refreshToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expires      DateTime
+}
+
+model ToAddDefaultPermissions {
+  id          String                     @id @default(cuid())
+  key         ToAddDefaultPermissionsKey
+  user        User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  permissions String[]
+  addedAt     DateTime                   @default(now())
+
+  @@unique([key, userId])
 }
 
 model UserSoundSettings {
@@ -596,7 +619,7 @@ model WeaponValue {
 
 model CallTypeValue {
   id       String    @id @default(cuid())
-  priority Int?
+  priority String?
   valueId  String
   value    Value     @relation("callTypeValueToValue", fields: [valueId], references: [id], onDelete: Cascade)
   Call911  Call911[]
@@ -938,32 +961,44 @@ model ActiveDispatchers {
 
 // 911 calls & bolos
 model Call911 {
-  id              String            @id @default(cuid())
-  caseNumber      Int               @default(autoincrement())
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @default(now()) @updatedAt
-  position        Position?         @relation(fields: [positionId], references: [id])
-  positionId      String?
-  userId          String?
-  assignedUnits   AssignedUnit[]
-  location        String            @db.Text
-  postal          String?           @db.Text
-  description     String?           @db.Text
-  descriptionData Json?
-  name            String            @db.VarChar(255)
-  ended           Boolean?          @default(false)
-  situationCode   StatusValue?      @relation(fields: [situationCodeId], references: [id])
-  situationCodeId String?
-  viaDispatch     Boolean?          @default(false)
-  divisions       DivisionValue[]
-  departments     DepartmentValue[]
-  events          Call911Event[]
-  incidents       LeoIncident[]
-  type            CallTypeValue?    @relation(fields: [typeId], references: [id])
-  typeId          String?
-  Officer         Officer[]         @relation("activeCall")
-  EmsFdDeputy     EmsFdDeputy[]     @relation("emsFdActiveCall")
-  CombinedLeoUnit CombinedLeoUnit[] @relation("CombinedLeoUnitActiveCall")
+  id               String            @id @default(cuid())
+  caseNumber       Int               @default(autoincrement())
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @default(now()) @updatedAt
+  position         Position?         @relation(fields: [positionId], references: [id])
+  positionId       String?
+  userId           String?
+  assignedUnits    AssignedUnit[]
+  location         String            @db.Text
+  postal           String?           @db.Text
+  description      String?           @db.Text
+  descriptionData  Json?
+  name             String            @db.VarChar(255)
+  ended            Boolean?          @default(false)
+  situationCode    StatusValue?      @relation(fields: [situationCodeId], references: [id])
+  situationCodeId  String?
+  viaDispatch      Boolean?          @default(false)
+  divisions        DivisionValue[]
+  departments      DepartmentValue[]
+  events           Call911Event[]
+  incidents        LeoIncident[]
+  type             CallTypeValue?    @relation(fields: [typeId], references: [id])
+  typeId           String?
+  Officer          Officer[]         @relation("activeCall")
+  EmsFdDeputy      EmsFdDeputy[]     @relation("emsFdActiveCall")
+  CombinedLeoUnit  CombinedLeoUnit[] @relation("CombinedLeoUnitActiveCall")
+  gtaMapPosition   GTAMapPosition?   @relation(fields: [gtaMapPositionId], references: [id])
+  gtaMapPositionId String?
+}
+
+model GTAMapPosition {
+  id      String @id @default(uuid())
+  x       Float
+  y       Float
+  z       Float
+  heading Float
+
+  Call911 Call911[]
 }
 
 model Position {
@@ -975,6 +1010,7 @@ model Position {
 
 model AssignedUnit {
   id            String           @id @default(uuid())
+  isPrimary     Boolean?         @default(false)
   officer       Officer?         @relation(fields: [officerId], references: [id])
   officerId     String?
   deputy        EmsFdDeputy?     @relation(fields: [emsFdDeputyId], references: [id])
@@ -1056,6 +1092,7 @@ model Record {
   expungementRequestId String?
   seizedItems          SeizedItem[]
   status               WhitelistStatus?    @default(ACCEPTED)
+  paymentStatus        PaymentStatus?
 }
 
 model RecordRelease {
@@ -1080,6 +1117,7 @@ model Warrant {
   RecordLog            RecordLog[]
   ExpungementRequest   ExpungementRequest?      @relation(fields: [expungementRequestId], references: [id])
   expungementRequestId String?
+  approvalStatus       WhitelistStatus?         @default(ACCEPTED)
 }
 
 model RecordLog {
@@ -1433,6 +1471,15 @@ enum JailTimeScale {
   SECONDS
 }
 
+enum PaymentStatus {
+  PAID
+  UNPAID
+}
+
+enum ToAddDefaultPermissionsKey {
+  MANAGE_WARRANTS_PERMISSIONS
+}
+
 // other
 enum Feature {
   BLEETER
@@ -1471,4 +1518,5 @@ enum Feature {
   ACTIVE_WARRANTS
   CITIZEN_DELETE_ON_DEAD
   PANIC_BUTTON
+  WARRANT_STATUS_APPROVAL
 }

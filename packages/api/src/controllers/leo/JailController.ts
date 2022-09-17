@@ -51,7 +51,7 @@ export class LeoController {
       OR: [{ arrested: true }, { Record: { some: { release: { isNot: null } } } }],
     };
 
-    const [totalCount, citizens] = await Promise.all([
+    const [totalCount, citizens] = await prisma.$transaction([
       prisma.citizen.count({ where }),
       prisma.citizen.findMany({
         where,
@@ -151,7 +151,7 @@ export class LeoController {
     const release = await prisma.recordRelease.create({
       data: {
         type,
-        citizenId: type === ReleaseType.BAIL_POSTED ? releasedById : null,
+        citizenId: type === ReleaseType.BAIL_POSTED ? releasedById || null : null,
       },
     });
 

@@ -2,11 +2,12 @@ import * as React from "react";
 import type { AxiosRequestConfig, AxiosError } from "axios";
 import { handleRequest } from "./fetch";
 import { type TranslationValues, useTranslations } from "use-intl";
-import Common from "../../locales/en/common.json";
 import type { FormikHelpers } from "formik";
 import { toastMessage } from "./toastMessage";
-import { useModal } from "state/modalState";
-import { ModalIds } from "types/ModalIds";
+import { useModal } from "../state/modalState";
+import { ModalIds } from "../types/ModalIds";
+import { useAuth } from "../context/AuthContext";
+import { getNextI18nConfig } from "./i18n/getNextI18nConfig";
 
 interface UseFetchOptions {
   overwriteState: State | null;
@@ -14,7 +15,9 @@ interface UseFetchOptions {
 
 type NullableAbortController = AbortController | null;
 type State = "loading" | "error";
-export type ErrorMessage = keyof typeof import("../../locales/en/common.json")["Errors"];
+
+type ErrorMessages = typeof import("../../locales/en/common.json")["Errors"];
+export type ErrorMessage = keyof ErrorMessages;
 
 type Options<Helpers extends object = object> = AxiosRequestConfig & {
   path: string;
@@ -43,6 +46,7 @@ interface Return<Data> {
 export default function useFetch({ overwriteState }: UseFetchOptions = { overwriteState: null }) {
   const [state, setState] = React.useState<State | null>(null);
   const { openModal } = useModal();
+  const { user } = useAuth();
 
   const t = useTranslations("Errors");
   const abortControllerRef = React.useRef<NullableAbortController>(null);
@@ -71,7 +75,10 @@ export default function useFetch({ overwriteState }: UseFetchOptions = { overwri
       const errors = parseErrors(response);
       const errorTitle = parseErrorTitle(response);
 
-      const hasKey = isErrorKey(error);
+      const locale = user?.locale ?? (await getNextI18nConfig()).defaultLocale;
+      const errorMessages = (await import(`../../locales/${locale}/common.json`)).Errors;
+
+      const hasKey = isErrorKey(error, errorMessages);
       const key = hasKey ? error : "unknown";
       const errorObj = getErrorObj(response);
 
@@ -87,7 +94,7 @@ export default function useFetch({ overwriteState }: UseFetchOptions = { overwri
           const translationOptions = typeof value === "string" ? undefined : value.data;
           const translationKey = typeof value === "string" ? value : value.message;
 
-          const message = isErrorKey(translationKey)
+          const message = isErrorKey(translationKey, errorMessages)
             ? t(translationKey, translationOptions)
             : translationKey;
 
@@ -164,12 +171,12 @@ function isAxiosError<T>(error: unknown): error is AxiosError<T, T> {
   return error instanceof Error || (typeof error === "object" && "response" in error);
 }
 
-function isErrorKey(key: string | ErrorObj): key is ErrorMessage {
+function isErrorKey(key: string | ErrorObj, errorMessages: ErrorMessages): key is ErrorMessage {
   if (typeof key !== "string") return false;
-  return Object.keys(Common.Errors).includes(key);
+  return Object.keys(errorMessages).includes(key);
 }
 
-function getErrorObj(error: unknown) {
+export function getErrorObj(error: unknown) {
   let errorObj = {};
 
   if (isAxiosError(error)) {

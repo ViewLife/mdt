@@ -1,5 +1,5 @@
 import * as React from "react";
-import L from "leaflet";
+import { CRS } from "leaflet";
 import { MapContainer, TileLayer } from "react-leaflet";
 import { getMapBounds } from "lib/map/utils";
 import { RenderMapBlips } from "./RenderMapBlips";
@@ -7,7 +7,7 @@ import { RenderActiveCalls } from "./calls/RenderActiveCalls";
 import { MapActions } from "./MapActions";
 import { RenderMapPlayers } from "./units/RenderMapPlayers";
 
-const TILES_URL = "/tiles/minimap_sea_{y}_{x}.png" as const;
+const TILES_URL = "/tiles/minimap_sea_{y}_{x}.webp" as const;
 
 export function Map() {
   const [map, setMap] = React.useState<L.Map | undefined>();
@@ -28,7 +28,7 @@ export function Map() {
         map && setMap(map);
       }}
       style={{ zIndex: 1, height: "calc(100vh - 3.5rem)", width: "100%" }}
-      crs={L.CRS.Simple}
+      crs={CRS.Simple}
       center={[0, 0]}
       zoom={-2}
       bounds={bounds}

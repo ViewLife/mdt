@@ -1,5 +1,6 @@
 export enum Cookie {
-  Session = "snaily-cad-session",
+  AccessToken = "snaily-cad-session",
+  RefreshToken = "snaily-cad-refresh-token",
 }
 
 export const API_TOKEN_HEADER = "snaily-cad-api-token" as const;
@@ -15,7 +16,7 @@ export const allowedFileExtensions = [
   "image/jpg",
   "image/webp",
 ] as const;
-export const IMGUR_REGEX = /https:\/\/i.imgur.com\/[A-Za-z0-9]\w+.(jpeg|png|gif|jpg)/g;
+export const IMAGES_REGEX = /https:\/\/(i.imgur.com|cdn.discordapp.com)\/.+/gi;
 
 export * from "./socket-events";
 export * from "./routes";

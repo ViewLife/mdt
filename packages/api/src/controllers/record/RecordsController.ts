@@ -6,14 +6,13 @@ import {
   UPDATE_WARRANT_SCHEMA,
 } from "@snailycad/schemas";
 import { BodyParams, Context, PathParams } from "@tsed/platform-params";
-import { NotFound } from "@tsed/exceptions";
+import { BadRequest, NotFound } from "@tsed/exceptions";
 import { prisma } from "lib/prisma";
 import { UseBeforeEach, UseBefore } from "@tsed/platform-middlewares";
 import { ActiveOfficer } from "middlewares/ActiveOfficer";
 import { Controller } from "@tsed/di";
 import { IsAuth } from "middlewares/IsAuth";
 import {
-  CadFeature,
   Citizen,
   Feature,
   Record,
@@ -26,6 +25,7 @@ import {
   DiscordWebhookType,
   CombinedLeoUnit,
   Officer,
+  PaymentStatus,
 } from "@prisma/client";
 import { validateSchema } from "lib/validateSchema";
 import { validateRecordData } from "lib/records/validateRecordData";
@@ -34,13 +34,14 @@ import { ExtendedNotFound } from "src/exceptions/ExtendedNotFound";
 import { UsePermissions, Permissions } from "middlewares/UsePermissions";
 import { isFeatureEnabled } from "lib/cad";
 import { sendDiscordWebhook } from "lib/discord/webhooks";
-import { getFirstOfficerFromActiveOfficer } from "lib/leo/utils";
+import { getFirstOfficerFromActiveOfficer, getInactivityFilter } from "lib/leo/utils";
 import type * as APITypes from "@snailycad/types/api";
 import { officerOrDeputyToUnit } from "lib/leo/officerOrDeputyToUnit";
 import { Socket } from "services/SocketService";
 import { assignUnitsToWarrant } from "lib/records/assignToWarrant";
+import type { cad } from "@snailycad/types";
 
-const assignedOfficersInclude = {
+export const assignedOfficersInclude = {
   combinedUnit: { include: combinedUnitProperties },
   officer: { include: leoProperties },
 };
@@ -55,10 +56,15 @@ export class RecordsController {
 
   @Get("/active-warrants")
   @Description("Get all active warrants (ACTIVE_WARRANTS must be enabled)")
-  async getActiveWarrants() {
+  async getActiveWarrants(@Context("cad") cad: cad) {
+    const inactivityFilter = getInactivityFilter(cad, "activeWarrantsInactivityTimeout");
+    if (inactivityFilter) {
+      this.endInactiveWarrants(inactivityFilter.updatedAt);
+    }
+
     const activeWarrants = await prisma.warrant.findMany({
       orderBy: { updatedAt: "desc" },
-      where: { status: "ACTIVE" },
+      where: { status: "ACTIVE", approvalStatus: "ACCEPTED", ...(inactivityFilter?.filter ?? {}) },
       include: {
         citizen: true,
         assignedOfficers: { include: assignedOfficersInclude },
@@ -72,10 +78,11 @@ export class RecordsController {
   @Post("/create-warrant")
   @Description("Create a new warrant")
   @UsePermissions({
-    fallback: (u) => u.isLeo,
-    permissions: [Permissions.Leo],
+    fallback: (u) => u.isLeo || u.isSupervisor,
+    permissions: [Permissions.ManageWarrants, Permissions.DeleteCitizenRecords],
   })
   async createWarrant(
+    @Context("cad") cad: cad,
     @BodyParams() body: unknown,
     @Context("activeOfficer") activeOfficer: (CombinedLeoUnit & { officers: Officer[] }) | Officer,
   ): Promise<APITypes.PostCreateWarrantData> {
@@ -92,12 +99,24 @@ export class RecordsController {
       throw new NotFound("citizenNotFound");
     }
 
+    const isWarrantApprovalEnabled = isFeatureEnabled({
+      feature: Feature.WARRANT_STATUS_APPROVAL,
+      features: cad.features,
+      defaultReturn: false,
+    });
+
+    const approvalStatus =
+      data.status === "ACTIVE" && isWarrantApprovalEnabled
+        ? WhitelistStatus.PENDING
+        : WhitelistStatus.ACCEPTED;
+
     const warrant = await prisma.warrant.create({
       data: {
         citizenId: citizen.id,
         officerId: officer?.id ?? null,
         description: data.description,
         status: data.status as WarrantStatus,
+        approvalStatus,
       },
     });
 
@@ -124,6 +143,10 @@ export class RecordsController {
         warrantId: warrant.id,
       },
     });
+
+    if (approvalStatus === WhitelistStatus.PENDING) {
+      throw new BadRequest("warrantApprovalRequired");
+    }
 
     const normalizedWarrant = officerOrDeputyToUnit(updatedWarrant);
     this.socket.emitCreateActiveWarrant(normalizedWarrant);
@@ -153,8 +176,8 @@ export class RecordsController {
       throw new NotFound("warrantNotFound");
     }
 
-    await Promise.all(
-      warrant.assignedOfficers.map(async ({ id }) =>
+    await prisma.$transaction(
+      warrant.assignedOfficers.map(({ id }) =>
         prisma.assignedWarrantOfficer.delete({
           where: { id },
         }),
@@ -197,7 +220,7 @@ export class RecordsController {
   })
   async createTicket(
     @BodyParams() body: unknown,
-    @Context("cad") cad: { features?: CadFeature[] },
+    @Context("cad") cad: cad,
     @Context("activeOfficer") activeOfficer: (CombinedLeoUnit & { officers: Officer[] }) | Officer,
   ): Promise<APITypes.PostRecordsData> {
     const data = validateSchema(CREATE_TICKET_SCHEMA, body);
@@ -227,7 +250,7 @@ export class RecordsController {
     permissions: [Permissions.Leo],
   })
   async updateRecordById(
-    @Context("cad") cad: { features?: CadFeature[] },
+    @Context("cad") cad: cad,
     @BodyParams() body: unknown,
     @PathParams("id") recordId: string,
   ): Promise<APITypes.PutRecordsByIdData> {
@@ -290,7 +313,7 @@ export class RecordsController {
   }: {
     data: z.infer<typeof CREATE_TICKET_SCHEMA>;
     recordId: string | null;
-    cad: any;
+    cad: cad;
     officer: Officer | null;
   }) {
     if (recordId) {
@@ -333,8 +356,13 @@ export class RecordsController {
         notes: data.notes,
         postal: String(data.postal),
         status: recordStatus,
+        paymentStatus: (data.paymentStatus ?? null) as PaymentStatus | null,
       },
-      update: { notes: data.notes, postal: data.postal },
+      update: {
+        notes: data.notes,
+        postal: data.postal,
+        paymentStatus: (data.paymentStatus ?? null) as PaymentStatus | null,
+      },
       include: { officer: { include: leoProperties }, citizen: true },
     });
 
@@ -346,7 +374,7 @@ export class RecordsController {
     }
 
     const validatedViolations = await Promise.all(
-      data.violations.map(async (v) => validateRecordData({ ...v, ticketId: ticket.id, cad })),
+      data.violations.map((v) => validateRecordData({ ...v, ticketId: ticket.id, cad })),
     );
 
     const violations = await prisma.$transaction(
@@ -380,6 +408,13 @@ export class RecordsController {
     );
 
     return { ...ticket, violations, seizedItems };
+  }
+
+  private async endInactiveWarrants(updatedAt: Date) {
+    await prisma.warrant.updateMany({
+      where: { updatedAt: { not: { gte: updatedAt } } },
+      data: { status: "INACTIVE" },
+    });
   }
 
   private async handleDiscordWebhook(
