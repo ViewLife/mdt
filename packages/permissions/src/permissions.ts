@@ -11,10 +11,9 @@ export enum Permissions {
   ManageCallHistory = "ManageCallHistory",
   LiveMap = "LiveMap",
   ViewCitizenLogs = "ViewCitizenLogs",
-  ViewDLExams = "ViewDLExams",
-  ManageDLExams = "ManageDLExams",
-  ViewWeaponExams = "ViewWeaponExams",
-  ManageWeaponExams = "ManageWeaponExams",
+  ViewLicenseExams = "ViewLicenseExams",
+  ManageLicenseExams = "ManageLicenseExams",
+
   ViewCustomFields = "ViewCustomFields",
   ManageCustomFields = "ManageCustomFields",
   ManageDMV = "ManageDMV",
@@ -92,9 +91,17 @@ export enum Permissions {
   ManageValueCitizenFlag = "ManageValueCitizenFlag",
   ManageValueQualification = "ManageValueQualification",
   ManageValueCallType = "ManageValueCallType",
+  ManageValueAddress = "ManageValueAddress",
 
   // other
   UsePersonalApiToken = "UsePersonalApiToken",
+
+  // deprecated
+
+  ViewDLExams = "ViewDLExams",
+  ManageDLExams = "ManageDLExams",
+  ViewWeaponExams = "ViewWeaponExams",
+  ManageWeaponExams = "ManageWeaponExams",
 }
 
 export const allPermissions = Object.values(Permissions);
